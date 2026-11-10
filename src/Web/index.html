@@ -1115,6 +1115,20 @@
         const ctx = canvas ? canvas.getContext('2d') : null;
         let historyData = [];
 
+        let isChartDrawing = false;
+        function requestDrawChart() {
+            if (document.hidden) return;
+            if (isChartDrawing) return;
+            isChartDrawing = true;
+            requestAnimationFrame(() => {
+                isChartDrawing = false;
+                drawChart();
+            });
+        }
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) requestDrawChart();
+        });
+
         function resizeCanvas() {
             if (!canvas || !canvas.parentElement) return;
             const rect = canvas.parentElement.getBoundingClientRect();
@@ -1127,7 +1141,7 @@
             canvas.width = Math.floor(w * dpr);
             canvas.height = Math.floor(h * dpr);
 
-            drawChart();
+            requestDrawChart();
         }
         window.addEventListener('resize', resizeCanvas);
 
@@ -1276,10 +1290,7 @@
             }
             ctx.strokeStyle = '#06b6d4';
             ctx.lineWidth = 2.5;
-            ctx.shadowColor = 'rgba(6, 182, 212, 0.6)';
-            ctx.shadowBlur = 6;
             ctx.stroke();
-            ctx.shadowBlur = 0;
 
             // 5. LAN Download Activity (Green line)
             let maxDownVal = 100;
@@ -1564,10 +1575,12 @@
                     let totalUsedBytes = 0;
                     let maxDiskActivity = 0;
                     let maxDiskLetter = 'C:';
-                    let drivesHtml = '';
 
                     const driveBadge = document.getElementById('driveCountBadge');
                     if (driveBadge) driveBadge.textContent = snap.storage.length + ' Partitionen';
+
+                    const gridEl = document.getElementById('drivesGrid');
+                    if (!window._driveDoms) window._driveDoms = {};
 
                     snap.storage.forEach(d => {
                         const totalB = Number(d.totalBytes) || 0;
@@ -1590,47 +1603,70 @@
 
                         const r = formatSpeed(d.readSpeed || 0);
                         const w = formatSpeed(d.writeSpeed || 0);
-
                         const isIoActive = (d.readSpeed > 50000 || d.writeSpeed > 50000 || act > 5);
 
-                        drivesHtml += `
-                            <div class="drive-card">
+                        let item = window._driveDoms[d.driveLetter];
+                        if (!item && gridEl) {
+                            const card = document.createElement('div');
+                            card.className = 'drive-card';
+                            card.innerHTML = `
                                 <div class="drive-head">
                                     <div class="drive-letter">
                                         <span style="color: var(--accent-cyan);">📁 ${d.driveLetter}</span>
                                         <span class="drive-label" title="${d.volumeLabel || ''}">${d.volumeLabel || 'Datenträger'}</span>
                                     </div>
                                     <div class="drive-badge-wrap">
-                                        <span class="drive-activity-badge" style="${act > 20 ? 'border-color: var(--accent-amber); color: var(--accent-amber);' : ''}">
-                                            ${isIoActive ? '<span class="pulse-dot" style="width:6px; height:6px;"></span>' : ''}
-                                            I/O: ${act.toFixed(0)}%
-                                        </span>
-                                        <span class="card-tag" style="color: ${col}; font-weight: 700;">${pct.toFixed(0)}%</span>
+                                        <span class="drive-activity-badge">I/O: 0%</span>
+                                        <span class="card-tag">0%</span>
                                     </div>
                                 </div>
-
-                                <!-- Speicherbelegungs-Balken -->
                                 <div class="progress-bar-bg" style="height: 7px;">
-                                    <div class="progress-bar-fill" style="width: ${pct}%; background-color: ${col};"></div>
+                                    <div class="progress-bar-fill" style="width: 0%;"></div>
                                 </div>
-
-                                <!-- Speicherplatz-Details -->
                                 <div class="drive-space">
-                                    <span>${freeStr} frei</span>
-                                    <span>${usedStr} belegt von ${totalStr}</span>
+                                    <span class="sp-free">--</span>
+                                    <span class="sp-used">--</span>
                                 </div>
-
-                                <!-- Durchsatz-Details (Lesen / Schreiben) -->
                                 <div class="drive-io-row">
-                                    <span class="io-tag">Lesen: <strong style="color: ${d.readSpeed > 10240 ? 'var(--accent-cyan)' : 'var(--text-muted)'};">${r.val} ${r.unit}</strong></span>
-                                    <span class="io-tag">Schreiben: <strong style="color: ${d.writeSpeed > 10240 ? 'var(--accent-purple)' : 'var(--text-muted)'};">${w.val} ${w.unit}</strong></span>
+                                    <span class="io-tag">Lesen: <strong class="io-r">0 KB/s</strong></span>
+                                    <span class="io-tag">Schreiben: <strong class="io-w">0 KB/s</strong></span>
                                 </div>
-                            </div>
-                        `;
-                    });
+                            `;
+                            gridEl.appendChild(card);
+                            item = {
+                                card: card,
+                                actBadge: card.querySelector('.drive-activity-badge'),
+                                tag: card.querySelector('.card-tag'),
+                                fill: card.querySelector('.progress-bar-fill'),
+                                spFree: card.querySelector('.sp-free'),
+                                spUsed: card.querySelector('.sp-used'),
+                                ioR: card.querySelector('.io-r'),
+                                ioW: card.querySelector('.io-w')
+                            };
+                            window._driveDoms[d.driveLetter] = item;
+                        }
 
-                    const gridEl = document.getElementById('drivesGrid');
-                    if (gridEl) gridEl.innerHTML = drivesHtml;
+                        if (item) {
+                            item.actBadge.innerHTML = (isIoActive ? '<span class="pulse-dot" style="width:6px; height:6px;"></span> ' : '') + 'I/O: ' + act.toFixed(0) + '%';
+                            if (act > 20) {
+                                item.actBadge.style.borderColor = 'var(--accent-amber)';
+                                item.actBadge.style.color = 'var(--accent-amber)';
+                            } else {
+                                item.actBadge.style.borderColor = '';
+                                item.actBadge.style.color = '';
+                            }
+                            item.tag.textContent = pct.toFixed(0) + '%';
+                            item.tag.style.color = col;
+                            item.fill.style.width = pct + '%';
+                            item.fill.style.backgroundColor = col;
+                            item.spFree.textContent = freeStr + ' frei';
+                            item.spUsed.textContent = usedStr + ' belegt von ' + totalStr;
+                            item.ioR.textContent = r.val + ' ' + r.unit;
+                            item.ioR.style.color = d.readSpeed > 10240 ? 'var(--accent-cyan)' : 'var(--text-muted)';
+                            item.ioW.textContent = w.val + ' ' + w.unit;
+                            item.ioW.style.color = d.writeSpeed > 10240 ? 'var(--accent-purple)' : 'var(--text-muted)';
+                        }
+                    });
 
                     const overallPct = totalStorageBytes > 0 ? (totalUsedBytes / totalStorageBytes) * 100.0 : 0;
                     document.getElementById('kpiStorage').textContent = overallPct.toFixed(1);
@@ -1658,7 +1694,7 @@
                 document.getElementById('legendCpu').textContent = cpuVal.toFixed(0) + '%';
                 document.getElementById('legendRam').textContent = ramPct.toFixed(0) + '%';
                 document.getElementById('legendNet').textContent = downSpd.val + ' ' + downSpd.unit;
-                drawChart();
+                requestDrawChart();
             } catch (err) {
                 console.error('Chart update error:', err);
             }

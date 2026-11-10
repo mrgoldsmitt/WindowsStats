@@ -11,6 +11,8 @@ installer_output/
 temp_*
 test_*
 inspect_*
+scratch/
+search_exits.ps1
 
 # Windows OS
 Thumbs.db

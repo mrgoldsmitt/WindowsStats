@@ -183,17 +183,30 @@ namespace WindowsStats.UI
             // Timer to refresh CPU/RAM readout
             _updateTimer = new System.Windows.Forms.Timer { Interval = 1000 };
             _updateTimer.Tick += (s, e) => {
-                var snap = _monitor.GetLatestSnapshot();
-                if (snap != null)
+                try
                 {
-                    _lblCpuRam.Text = string.Format("CPU: {0:F1}% | RAM: {1:F1}% | Prozess: {2:F1} MB RAM ({3:F2}% CPU)",
-                        snap.Cpu.TotalLoad, snap.Memory.LoadPercent, snap.System.ProcessMemoryMb, snap.System.ProcessCpuPercent);
+                    var snap = _monitor.GetLatestSnapshot();
+                    if (snap != null && snap.Cpu != null && snap.Memory != null && snap.System != null)
+                    {
+                        _lblCpuRam.Text = string.Format("CPU: {0:F1}% | RAM: {1:F1}% | Prozess: {2:F1} MB RAM ({3:F2}% CPU)",
+                            snap.Cpu.TotalLoad, snap.Memory.LoadPercent, snap.System.ProcessMemoryMb, snap.System.ProcessCpuPercent);
+                    }
                 }
+                catch {}
             };
             _updateTimer.Start();
 
+            // Minimize to system tray instead of staying on taskbar
+            this.Resize += (s, e) => {
+                if (this.WindowState == FormWindowState.Minimized)
+                {
+                    this.Hide();
+                }
+            };
+
+            // Keep alive in tray unless Windows is shutting down
             this.FormClosing += (s, e) => {
-                if (e.CloseReason == CloseReason.UserClosing)
+                if (e.CloseReason != CloseReason.WindowsShutDown)
                 {
                     e.Cancel = true;
                     this.Hide();
@@ -306,6 +319,7 @@ namespace WindowsStats.UI
                     Verb = "runas",
                     Arguments = "--tray"
                 };
+                Program.ReleaseSingleInstanceMutex();
                 Process.Start(psi);
                 Application.Exit();
             }

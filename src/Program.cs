@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using WindowsStats.Monitoring;
 using WindowsStats.Server;
@@ -10,13 +11,61 @@ using WindowsStats.UI;
 
 namespace WindowsStats
 {
-    static class Program
+    public static class Program
     {
         private static Mutex _singleInstanceMutex;
+
+        public static void ReleaseSingleInstanceMutex()
+        {
+            try
+            {
+                if (_singleInstanceMutex != null)
+                {
+                    _singleInstanceMutex.ReleaseMutex();
+                    _singleInstanceMutex.Dispose();
+                    _singleInstanceMutex = null;
+                }
+            }
+            catch {}
+        }
+
+        private static void LogCrash(string context, Exception ex)
+        {
+            try
+            {
+                string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WindowsStats", "crash.log");
+                string dir = Path.GetDirectoryName(logPath);
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+                string entry = string.Format("[{0:yyyy-MM-dd HH:mm:ss}] [{1}] {2}\r\nStack: {3}\r\n\r\n",
+                    DateTime.Now, context, ex != null ? ex.Message : "Unknown", ex != null ? ex.StackTrace : "");
+                File.AppendAllText(logPath, entry);
+            }
+            catch {}
+        }
 
         [STAThread]
         static void Main(string[] args)
         {
+            Logger.Log("Program.Main started. Args: " + string.Join(" ", args));
+
+            // 0. Global unhandled exception shields (prevent app from terminating unexpectedly)
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) => {
+                Logger.Log("FATAL Application.ThreadException: " + e.Exception);
+                LogCrash("Application.ThreadException", e.Exception);
+            };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => {
+                Logger.Log("FATAL AppDomain.UnhandledException: " + e.ExceptionObject);
+                LogCrash("AppDomain.UnhandledException", e.ExceptionObject as Exception);
+            };
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                Logger.Log("FATAL TaskScheduler.UnobservedTaskException: " + e.Exception);
+                LogCrash("TaskScheduler.UnobservedTaskException", e.Exception);
+                e.SetObserved();
+            };
+
             // 1. Resolve embedded assemblies (LibreHardwareMonitorLib.dll, HidSharp.dll)
             AppDomain.CurrentDomain.AssemblyResolve += (sender, resolveArgs) =>
             {
@@ -40,12 +89,28 @@ namespace WindowsStats
                 }
             };
 
-            // 2. Single instance check
-            bool createdNew;
-            _singleInstanceMutex = new Mutex(true, "WindowsStats_SingleInstanceMutex_Global", out createdNew);
+            // 2. Resilient Single instance check
+            bool createdNew = false;
+            try
+            {
+                _singleInstanceMutex = new Mutex(true, "WindowsStats_SingleInstanceMutex_Global", out createdNew);
+                if (!createdNew)
+                {
+                    // Wait up to 1000ms in case previous instance is restarting/closing
+                    if (_singleInstanceMutex.WaitOne(1000, false))
+                    {
+                        createdNew = true;
+                    }
+                }
+            }
+            catch
+            {
+                createdNew = true; // Fallback if mutex ownership check fails
+            }
+
             if (!createdNew)
             {
-                // Another instance is already running! Open browser and exit
+                // Another active instance is running! Open browser and exit
                 try
                 {
                     Process.Start("http://localhost:8420");
@@ -82,7 +147,7 @@ namespace WindowsStats
             }
 
             // 4. Initialize core components
-            HardwareMonitor monitor = new HardwareMonitor(1000);
+            HardwareMonitor monitor = new HardwareMonitor(2000);
             monitor.Start();
 
             HttpServer server = new HttpServer(port, monitor);
@@ -108,8 +173,11 @@ namespace WindowsStats
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            Logger.Log("Creating TrayApplicationContext...");
             TrayApplicationContext context = new TrayApplicationContext(monitor, server, port, showControlOnStart);
+            Logger.Log("Starting Application.Run(context)...");
             Application.Run(context);
+            Logger.Log("Application.Run(context) has exited!");
         }
     }
 }

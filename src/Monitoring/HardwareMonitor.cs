@@ -50,12 +50,12 @@ namespace WindowsStats.Monitoring
 
         private Thread _workerThread;
         private volatile bool _running;
-        private int _pollingIntervalMs = 1000;
+        private int _pollingIntervalMs = 2000;
         private int _activeClientsCount = 0;
 
         public event Action<HardwareSnapshot> OnSnapshotUpdated;
 
-        public HardwareMonitor(int pollingIntervalMs = 1000)
+        public HardwareMonitor(int pollingIntervalMs = 2000)
         {
             _pollingIntervalMs = pollingIntervalMs;
             _hostname = Environment.MachineName;
@@ -85,6 +85,27 @@ namespace WindowsStats.Monitoring
                 IsNetworkEnabled = true,
                 IsStorageEnabled = true
             };
+
+            // Pre-seed an initial snapshot so GetLatestSnapshot() is NEVER null and never blocks
+            _lastSnapshot = CreateInitialSnapshot();
+        }
+
+        private HardwareSnapshot CreateInitialSnapshot()
+        {
+            HardwareSnapshot snap = new HardwareSnapshot();
+            snap.Timestamp = (long)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds;
+            snap.System.Hostname = _hostname;
+            snap.System.OsVersion = _osVersion;
+            snap.System.Port = 8420;
+            snap.System.IsElevated = _isElevated;
+            snap.System.Motherboard = _motherboardName;
+            snap.System.PrimaryLanIp = _cachedLanIp;
+            snap.Cpu.Name = "Intel Core (" + Environment.ProcessorCount + " Cores)";
+            snap.Cpu.CoreCount = Environment.ProcessorCount;
+            snap.Memory.TotalFormatted = "-- GB";
+            snap.Network.PrimaryAdapter = "LAN-Anschluss";
+            snap.Network.Ipv4 = _cachedLanIp;
+            return snap;
         }
 
         private void InitMotherboard()
@@ -229,11 +250,7 @@ namespace WindowsStats.Monitoring
         {
             lock (_lock)
             {
-                if (_lastSnapshot == null)
-                {
-                    _lastSnapshot = CollectSnapshot();
-                }
-                return _lastSnapshot;
+                return _lastSnapshot ?? CreateInitialSnapshot();
             }
         }
 
@@ -288,9 +305,9 @@ namespace WindowsStats.Monitoring
                 }
 
                 int sleepMs = _pollingIntervalMs;
-                if (_activeClientsCount <= 0 && sleepMs < 2500)
+                if (_activeClientsCount <= 0 && sleepMs < 3000)
                 {
-                    sleepMs = 2500;
+                    sleepMs = 3000;
                 }
                 Thread.Sleep(sleepMs);
             }
