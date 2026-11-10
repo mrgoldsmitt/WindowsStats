@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WindowsStats - Hardware Monitor & Dashboard</title>
+    <!-- PWA & Mobile Web App Meta -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WindowsStats">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+    <link rel="icon" type="image/svg+xml" href="/assets/icon.svg">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <style>
+        :root {
+            --bg-base: #0a0e17;
+            --bg-card: #121826;
+            --bg-card-hover: #172033;
+            --bg-chip: #1a2234;
+            --border-color: #232d42;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
+            
+            --accent-green: #10b981;
+            --accent-green-glow: rgba(16, 185, 129, 0.2);
+            --accent-cyan: #06b6d4;
+            --accent-cyan-glow: rgba(6, 182, 212, 0.2);
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --accent-blue: #3b82f6;
+
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: var(--font-sans);
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 16px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        /* Top Header */
+        header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #059669, #0284c7);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px var(--accent-green-glow);
+        }
+
+        .brand-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: #ffffff;
+        }
+
+        .brand-title h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+        }
+
+        .header-badges {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            background: var(--bg-chip);
+            border: 1px solid var(--border-color);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .badge-live {
+            color: var(--accent-green);
+            border-color: rgba(16, 185, 129, 0.4);
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+            animation: pulse 1.8s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .btn {
+            background: var(--bg-chip);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-family: var(--font-mono);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-cyan);
+            color: #fff;
+        }
+
+        .btn-accent {
+            background: rgba(6, 182, 212, 0.15);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .btn-accent:hover {
+            background: rgba(6, 182, 212, 0.25);
+        }
+
+        /* KPI Ribbon */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .kpi-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+
+        .kpi-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .kpi-value {
+            font-family: var(--font-mono);
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            margin: 4px 0;
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .kpi-unit {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .kpi-sub {
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: var(--bg-chip);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease, background-color 0.3s;
+        }
+
+        /* Live Sparkline Chart Card */
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chart-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chart-legend {
+            display: flex;
+            gap: 16px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .canvas-wrap {
+            width: 100%;
+            height: 120px;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .col-4 { grid-column: span 4; }
+        .col-6 { grid-column: span 6; }
+        .col-8 { grid-column: span 8; }
+        .col-12 { grid-column: span 12; }
+
+        @media (max-width: 1024px) {
+            .col-4, .col-6, .col-8 { grid-column: span 12; }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-tag {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            background: var(--bg-chip);
+            color: var(--text-muted);
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+
+        /* CPU Section */
+        .cpu-hero {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .radial-gauge {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .radial-gauge svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .radial-gauge circle {
+            fill: none;
+            stroke-width: 7;
+            stroke-linecap: round;
+        }
+
+        .gauge-bg {
+            stroke: var(--bg-chip);
+        }
+
+        .gauge-bar {
+            stroke: var(--accent-cyan);
+            stroke-dasharray: 201;
+            stroke-dashoffset: 201;
+            transition: stroke-dashoffset 0.4s ease, stroke 0.3s;
+        }
+
+        .gauge-text {
+            position: absolute;
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 15px;
+            color: #fff;
+        }
+
+        .cpu-info-rows {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .info-val {
+            font-family: var(--font-mono);
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .cores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .core-chip {
+            background: var(--bg-chip);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 10px;
+        }
+
+        .core-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .core-load-val {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* Drives Grid (12 Drives) */
+        .drives-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+            gap: 12px;
+        }
+
+        .drive-card {
+            background: var(--bg-chip);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .drive-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-1px);
+        }
+
+        .drive-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .drive-letter {
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drive-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .drive-badge-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .drive-activity-badge {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .drive-space {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .drive-io-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-dim);
+            padding-top: 4px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .io-tag {
+            color: #cbd5e1;
+        }
+
+        /* Physical LAN Card */
+        .lan-hero-card {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(16, 185, 129, 0.05));
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 12px;
+        }
+
+        .lan-hero-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .lan-hero-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lan-speeds-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 10px 0;
+        }
+
+        .lan-speed-box {
+            background: var(--bg-chip);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+
+        .lan-speed-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 4px;
+        }
+
+        .lan-speed-val {
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .adapter-row {
+            background: var(--bg-chip);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 440px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .qr-box {
+            background: #fff;
+            padding: 16px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .qr-box canvas {
+            display: block;
+        }
+
+        .qr-url {
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--accent-cyan);
+            word-break: break-all;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 24px;
+            padding: 12px 18px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-dim);
+            font-family: var(--font-mono);
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m2 3v2h2V7H6m4 0v2h2V7h-2m4 0v2h2V7h-2m-8 4v2h2v-2H6m4 0v2h2v-2h-2m4 0v2h2v-2h-2m-8 4v2h2v-2H6m4 0v2h2v-2h-2m4 0v2h2v-2h-2z"/></svg>
+                </div>
+                <div class="brand-title">
+                    <h1>WindowsStats <span id="badgeElevated" class="card-tag" style="font-size: 10px;">USER</span></h1>
+                    <div class="brand-subtitle" id="systemSummary">Lade Systemdaten...</div>
+                </div>
+            </div>
+
+            <div class="header-badges">
+                <div class="badge badge-live" id="streamBadge">
+                    <div class="pulse-dot"></div>
+                    <span id="connStatus">LIVE • SSE</span>
+                </div>
+
+                <div class="badge">
+                    <span>⏱️</span>
+                    <span id="uptimeVal">--</span>
+                </div>
+
+                <div class="badge" id="lanPill" style="cursor: pointer;" title="Klicken zum Kopieren">
+                    <span>🌐</span>
+                    <span id="lanUrl">http://...</span>
+                    <span id="copyFeedback" style="color: var(--accent-green); display: none;">✓</span>
+                </div>
+
+                <button class="btn btn-accent" id="btnInstallPwa" style="display: none; background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.4); color: var(--accent-green);">
+                    <span>📥</span> App installieren
+                </button>
+
+                <button class="btn btn-accent" id="btnQr">
+                    <span>📱</span> QR-Code
+                </button>
+            </div>
+        </header>
+
+        <!-- KPI Ribbon -->
+        <div class="kpi-row">
+            <!-- KPI 1: CPU -->
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>CPU Gesamtlast</span>
+                    <span>⚡</span>
+                </div>
+                <div class="kpi-value">
+                    <span id="kpiCpu">0.0</span><span class="kpi-unit">%</span>
+                </div>
+                <div class="kpi-sub">
+                    <span id="kpiCpuCores">4 Kerne</span>
+                    <span id="kpiCpuTemp">-- °C</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="kpiCpuBar" style="width: 0%; background-color: var(--accent-cyan);"></div>
+                </div>
+            </div>
+
+            <!-- KPI 2: RAM -->
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>RAM Belegung</span>
+                    <span>🧠</span>
+                </div>
+                <div class="kpi-value">
+                    <span id="kpiRam">0.0</span><span class="kpi-unit">%</span>
+                </div>
+                <div class="kpi-sub">
+                    <span id="kpiRamUsed">0 GB</span>
+                    <span id="kpiRamTotal">von 24.0 GB</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="kpiRamBar" style="width: 0%; background-color: var(--accent-purple);"></div>
+                </div>
+            </div>
+
+            <!-- KPI 3: LAN Durchsatz -->
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>LAN-Durchsatz</span>
+                    <span>📶</span>
+                </div>
+                <div class="kpi-value">
+                    <span id="kpiNetDown">0.0</span><span class="kpi-unit" id="kpiNetDownUnit">KB/s</span>
+                </div>
+                <div class="kpi-sub">
+                    <span>↑ <span id="kpiNetUp">0.0</span> <span id="kpiNetUpUnit">KB/s</span></span>
+                    <span id="kpiNetAdapter" style="color: var(--accent-cyan);">LAN: Intel I219-V</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="kpiNetBar" style="width: 20%; background-color: var(--accent-green);"></div>
+                </div>
+            </div>
+
+            <!-- KPI 4: Platten-Auslastung -->
+            <div class="kpi-card">
+                <div class="kpi-title">
+                    <span>Platten (12 Laufwerke)</span>
+                    <span>💾</span>
+                </div>
+                <div class="kpi-value">
+                    <span id="kpiStorage">0.0</span><span class="kpi-unit">% belegt</span>
+                </div>
+                <div class="kpi-sub">
+                    <span id="kpiStorageUsed">0 TB belegt</span>
+                    <span id="kpiDiskIo">Max. I/O: 0%</span>
+                </div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="kpiStorageBar" style="width: 0%; background-color: var(--accent-green);"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live History Chart Card -->
+        <div class="chart-card">
+            <div class="chart-header">
+                <div class="chart-title">
+                    <span>Echtzeit-Verlauf (Letzte 60 Sekunden)</span>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--accent-cyan);"></div>
+                        <span>CPU Last (<span id="legendCpu">0%</span>)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--accent-purple);"></div>
+                        <span>RAM Last (<span id="legendRam">0%</span>)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--accent-green);"></div>
+                        <span>LAN Download (<span id="legendNet">0 KB/s</span>)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="canvas-wrap">
+                <canvas id="sparklineCanvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Main Detail Grid -->
+        <div class="main-grid">
+            <!-- CPU Detailed Card -->
+            <div class="card col-6">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>Prozessor</span>
+                    </div>
+                    <span class="card-tag" id="cpuModelTag">Intel Core i5-6500</span>
+                </div>
+
+                <div class="cpu-hero">
+                    <div class="radial-gauge">
+                        <svg viewBox="0 0 80 80">
+                            <circle class="gauge-bg" cx="40" cy="40" r="32"/>
+                            <circle class="gauge-bar" id="cpuGaugeCircle" cx="40" cy="40" r="32"/>
+                        </svg>
+                        <div class="gauge-text" id="cpuGaugeText">0%</div>
+                    </div>
+                    <div class="cpu-info-rows">
+                        <div class="info-row">
+                            <span>Modell:</span>
+                            <span class="info-val" id="cpuNameVal">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Taktung:</span>
+                            <span class="info-val" id="cpuClockVal">-- MHz</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Temperatur:</span>
+                            <span class="info-val" id="cpuTempVal">--</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Leistungsaufnahme:</span>
+                            <span class="info-val" id="cpuPowerVal">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">KERN-AUSLASTUNG</div>
+                    <div class="cores-grid" id="coresGrid">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory & GPU Card -->
+            <div class="card col-6">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>Arbeitsspeicher & Grafik</span>
+                    </div>
+                    <span class="card-tag" id="ramTotalTag">24 GB RAM</span>
+                </div>
+
+                <div>
+                    <div class="info-row" style="margin-bottom: 4px;">
+                        <span>Physischer RAM:</span>
+                        <span class="info-val"><span id="ramUsedVal">0.0</span> / <span id="ramTotalVal">0.0</span> GB (<span id="ramPctVal">0%</span>)</span>
+                    </div>
+                    <div class="progress-bar-bg" style="height: 10px;">
+                        <div class="progress-bar-fill" id="ramBarFill" style="width: 0%; background: var(--accent-purple);"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="info-row" style="margin-bottom: 4px;">
+                        <span>Virtueller Speicher (Pagefile):</span>
+                        <span class="info-val"><span id="vramUsedVal">0.0</span> / <span id="vramTotalVal">0.0</span> GB</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" id="vramBarFill" style="width: 0%; background: var(--accent-blue);"></div>
+                    </div>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top: 10px;">
+                    <div class="info-row" style="margin-bottom: 4px;">
+                        <span style="font-weight: 600; color: #fff;">Grafikprozessor:</span>
+                        <span class="info-val" id="gpuNameVal">Intel HD Graphics 530</span>
+                    </div>
+                    <div class="info-row">
+                        <span>3D Last:</span>
+                        <span class="info-val" id="gpu3dVal">0.0%</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Video Decode:</span>
+                        <span class="info-val" id="gpuVideoVal">0.0%</span>
+                    </div>
+                    <div class="info-row">
+                        <span>Shared Memory:</span>
+                        <span class="info-val" id="gpuMemVal">0 MB</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Drives Section (All 12 Drives with Auslastung & I/O) -->
+            <div class="card col-12">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>Laufwerke & Festplatten-Auslastung</span>
+                        <span class="badge" id="driveCountBadge" style="font-size: 11px;">12 Partitionen</span>
+                    </div>
+                    <span class="card-tag">Speicherbelegung + I/O-Aktivität</span>
+                </div>
+
+                <div class="drives-grid" id="drivesGrid">
+                    <!-- Rendered dynamically for C:, D:, E:, F:, G:, H:, I:, J:, K:, L:, N:, V: -->
+                </div>
+            </div>
+
+            <!-- LAN-Anschluss & Netzwerk-Schnittstellen -->
+            <div class="card col-8">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>Netzwerk: LAN-Anschluss (Ethernet)</span>
+                    </div>
+                    <span class="card-tag" id="lanSpeedBadge">1 Gbit/s Vollduplex</span>
+                </div>
+
+                <!-- Hero LAN Box -->
+                <div class="lan-hero-card">
+                    <div class="lan-hero-head">
+                        <div class="lan-hero-title">
+                            <span style="color: var(--accent-green);">●</span>
+                            <span id="lanTitleText">Intel(R) Ethernet Connection (2) I219-V</span>
+                        </div>
+                        <span class="badge" id="lanIpBadge">192.168.188.194</span>
+                    </div>
+
+                    <div class="lan-speeds-grid">
+                        <div class="lan-speed-box">
+                            <div class="lan-speed-label">
+                                <span style="color: var(--accent-cyan); font-size: 14px;">↓</span>
+                                <span>DOWNLOAD GESCHWINDIGKEIT</span>
+                            </div>
+                            <div class="lan-speed-val">
+                                <span id="heroLanDownVal" style="color: var(--accent-cyan);">0.0</span>
+                                <span style="font-size: 13px; color: var(--text-muted);" id="heroLanDownUnit">KB/s</span>
+                            </div>
+                        </div>
+
+                        <div class="lan-speed-box">
+                            <div class="lan-speed-label">
+                                <span style="color: var(--accent-purple); font-size: 14px;">↑</span>
+                                <span>UPLOAD GESCHWINDIGKEIT</span>
+                            </div>
+                            <div class="lan-speed-val">
+                                <span id="heroLanUpVal" style="color: var(--accent-purple);">0.0</span>
+                                <span style="font-size: 13px; color: var(--text-muted);" id="heroLanUpUnit">KB/s</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="info-row" style="font-size: 11px; font-family: var(--font-mono); margin-top: 6px;">
+                        <span>Gateway: <span id="lanGatewayVal" style="color: #fff;">192.168.188.1</span></span>
+                        <span>Gesamt Empfangen: <span id="lanTotalRecvVal" style="color: #fff;">0 GB</span> | Gesendet: <span id="lanTotalSentVal" style="color: #fff;">0 GB</span></span>
+                    </div>
+                </div>
+
+                <!-- Secondary Adapters -->
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">WEITERE SCHNITTSTELLEN</div>
+                <div id="networkAdaptersList">
+                    <!-- Other adapters (VMware etc.) -->
+                </div>
+            </div>
+
+            <!-- System Info & Motherboard -->
+            <div class="card col-4">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>System & Hardware</span>
+                    </div>
+                    <span class="card-tag">STATUS</span>
+                </div>
+
+                <div class="info-row">
+                    <span>Computername:</span>
+                    <span class="info-val" id="sysHostVal">--</span>
+                </div>
+                <div class="info-row">
+                    <span>Hauptplatine:</span>
+                    <span class="info-val" id="sysMoboVal">--</span>
+                </div>
+                <div class="info-row">
+                    <span>Betriebssystem:</span>
+                    <span class="info-val" id="sysOsVal">--</span>
+                </div>
+                <div class="info-row">
+                    <span>LAN IPv4:</span>
+                    <span class="info-val" id="sysIpVal" style="color: var(--accent-cyan);">--</span>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 4px;">
+                    <div style="font-size: 11px; color: var(--accent-green); font-weight: 600; margin-bottom: 4px;">WINDOWSSTATS PROZESS</div>
+                    <div class="info-row">
+                        <span>Arbeitsspeicher (RAM):</span>
+                        <span class="info-val" id="procRamVal">~25 MB</span>
+                    </div>
+                    <div class="info-row">
+                        <span>CPU-Auslastung:</span>
+                        <span class="info-val" id="procCpuVal">&lt; 0.1%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <div>WindowsStats • BitAxe-style Hardware Monitoring Tool</div>
+            <div>Reverse-Engineered via REA & Ghidra/Cecil • LibreHardwareMonitorLib Native Core</div>
+            <div>Port: 8420 • Physischer LAN-Port & 12 Laufwerke Aktiv</div>
+        </footer>
+    </div>
+
+    <!-- QR Code Modal -->
+    <div class="modal-overlay" id="qrModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">📱 Mobiler Zugriff im WLAN</div>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <p style="font-size: 13px; color: var(--text-muted); text-align: center;">
+                Scanne diesen QR-Code mit deinem Smartphone oder Tablet, um das Dashboard im lokalen Netzwerk zu öffnen:
+            </p>
+            <div class="qr-box">
+                <canvas id="qrCanvas" width="200" height="200"></canvas>
+            </div>
+            <div class="qr-url" id="qrUrlText">http://192.168.188.194:8420</div>
+            <button class="btn btn-accent" style="width: 100%; justify-content: center;" id="modalCopyBtn">
+                📋 URL in Zwischenablage kopieren
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- QR Code Generator ---
+        function drawSimpleQR(text, canvas) {
+            const ctx = canvas.getContext('2d');
+            const size = canvas.width;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                ctx.drawImage(img, 10, 10, size - 20, size - 20);
+            };
+            img.onerror = function() {
+                ctx.fillStyle = '#0a0e17';
+                ctx.fillRect(20, 20, size - 40, size - 40);
+                ctx.fillStyle = '#10b981';
+                ctx.font = '12px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText('ÖFFNE IM BROWSER:', size / 2, size / 2 - 15);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 13px monospace';
+                ctx.fillText(text, size / 2, size / 2 + 10);
+            };
+            img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(text);
+        }
+
+        // --- Sparkline History Chart ---
+        const canvas = document.getElementById('sparklineCanvas');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+        let historyData = [];
+
+        function resizeCanvas() {
+            if (!canvas || !canvas.parentElement) return;
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const w = Math.max(rect.width, 260);
+            const h = rect.height > 0 ? rect.height : 120;
+            const dpr = window.devicePixelRatio || 1;
+
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            canvas.width = Math.floor(w * dpr);
+            canvas.height = Math.floor(h * dpr);
+
+            drawChart();
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function drawChart() {
+            if (!canvas || !ctx) return;
+            const dpr = window.devicePixelRatio || 1;
+            let w = canvas.width / dpr;
+            let h = canvas.height / dpr;
+
+            if (w <= 20 || h <= 20) {
+                if (canvas.parentElement) {
+                    const rect = canvas.parentElement.getBoundingClientRect();
+                    if (rect.width > 20) {
+                        w = rect.width;
+                        h = rect.height > 0 ? rect.height : 120;
+                        canvas.style.width = w + 'px';
+                        canvas.style.height = h + 'px';
+                        canvas.width = Math.floor(w * dpr);
+                        canvas.height = Math.floor(h * dpr);
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            }
+
+            ctx.save();
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+
+            // 1. Grid Lines & Axis Labels
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            ctx.font = '10px ui-monospace, Consolas, monospace';
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.4)';
+            ctx.textAlign = 'left';
+
+            const plotLeft = 38;
+            const plotTop = 10;
+            const plotBottom = h - 6;
+            const plotHeight = plotBottom - plotTop;
+            const plotWidth = w - plotLeft;
+
+            const gridLevels = [
+                { pct: 100, label: '100%' },
+                { pct: 75,  label: '75%' },
+                { pct: 50,  label: '50%' },
+                { pct: 25,  label: '25%' },
+                { pct: 0,   label: '0%' }
+            ];
+
+            gridLevels.forEach(lvl => {
+                const y = plotBottom - (lvl.pct / 100.0) * plotHeight;
+                ctx.beginPath();
+                ctx.moveTo(plotLeft, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+                ctx.fillText(lvl.label, 4, y + 3);
+            });
+
+            // 2. Prepare 60 Points Buffer
+            const totalSlots = 60;
+            let points = [];
+            if (historyData && historyData.length > 0) {
+                const padCount = Math.max(0, totalSlots - historyData.length);
+                const first = historyData[0];
+                for (let i = 0; i < padCount; i++) {
+                    points.push({
+                        cpu: Number(first.cpu) || 0,
+                        ram: Number(first.ram) || 0,
+                        down: Number(first.down) || 0
+                    });
+                }
+                const startIdx = Math.max(0, historyData.length - totalSlots);
+                for (let i = startIdx; i < historyData.length; i++) {
+                    points.push({
+                        cpu: Number(historyData[i].cpu) || 0,
+                        ram: Number(historyData[i].ram) || 0,
+                        down: Number(historyData[i].down) || 0
+                    });
+                }
+            } else {
+                ctx.restore();
+                return;
+            }
+
+            const step = plotWidth / (totalSlots - 1);
+
+            function getY(percent) {
+                const clamped = Math.max(0, Math.min(100, percent));
+                return plotBottom - (clamped / 100.0) * plotHeight;
+            }
+
+            // 3. RAM Area & Stroke (Purple)
+            ctx.beginPath();
+            ctx.moveTo(plotLeft, plotBottom);
+            for (let i = 0; i < points.length; i++) {
+                const x = plotLeft + i * step;
+                const y = getY(points[i].ram);
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(plotLeft + (points.length - 1) * step, plotBottom);
+            ctx.closePath();
+
+            const ramGrad = ctx.createLinearGradient(0, plotTop, 0, plotBottom);
+            ramGrad.addColorStop(0, 'rgba(168, 85, 247, 0.28)');
+            ramGrad.addColorStop(1, 'rgba(168, 85, 247, 0.0)');
+            ctx.fillStyle = ramGrad;
+            ctx.fill();
+
+            ctx.beginPath();
+            for (let i = 0; i < points.length; i++) {
+                const x = plotLeft + i * step;
+                const y = getY(points[i].ram);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 4. CPU Area & Stroke (Cyan + Glow)
+            ctx.beginPath();
+            ctx.moveTo(plotLeft, plotBottom);
+            for (let i = 0; i < points.length; i++) {
+                const x = plotLeft + i * step;
+                const y = getY(points[i].cpu);
+                ctx.lineTo(x, y);
+            }
+            ctx.lineTo(plotLeft + (points.length - 1) * step, plotBottom);
+            ctx.closePath();
+
+            const cpuGrad = ctx.createLinearGradient(0, plotTop, 0, plotBottom);
+            cpuGrad.addColorStop(0, 'rgba(6, 182, 212, 0.38)');
+            cpuGrad.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+            ctx.fillStyle = cpuGrad;
+            ctx.fill();
+
+            ctx.beginPath();
+            for (let i = 0; i < points.length; i++) {
+                const x = plotLeft + i * step;
+                const y = getY(points[i].cpu);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 2.5;
+            ctx.shadowColor = 'rgba(6, 182, 212, 0.6)';
+            ctx.shadowBlur = 6;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // 5. LAN Download Activity (Green line)
+            let maxDownVal = 100;
+            for (let i = 0; i < points.length; i++) {
+                if (points[i].down > maxDownVal) maxDownVal = points[i].down;
+            }
+            ctx.beginPath();
+            for (let i = 0; i < points.length; i++) {
+                const x = plotLeft + i * step;
+                const pct = Math.min(100, (points[i].down / maxDownVal) * 100);
+                const y = getY(pct);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // 6. Current Value Dots on Far Right
+            if (points.length > 0) {
+                const last = points[points.length - 1];
+                const lastX = plotLeft + (points.length - 1) * step;
+
+                // LAN Dot
+                const lanPct = Math.min(100, (last.down / maxDownVal) * 100);
+                const lanY = getY(lanPct);
+                ctx.fillStyle = '#10b981';
+                ctx.beginPath();
+                ctx.arc(lastX, lanY, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // RAM Dot
+                const ramY = getY(last.ram);
+                ctx.fillStyle = '#a855f7';
+                ctx.beginPath();
+                ctx.arc(lastX, ramY, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // CPU Dot
+                const cpuY = getY(last.cpu);
+                ctx.fillStyle = '#06b6d4';
+                ctx.beginPath();
+                ctx.arc(lastX, cpuY, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // --- Format Helpers ---
+        function formatBytes(bytes, decimals = 1) {
+            if (!bytes || bytes <= 0) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            if (i < 0) return '0 B';
+            if (i >= sizes.length) return (bytes / Math.pow(k, sizes.length - 1)).toFixed(dm) + ' ' + sizes[sizes.length - 1];
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        function formatSpeed(bytesPerSec) {
+            if (!bytesPerSec || bytesPerSec <= 0) return { val: '0.0', unit: 'KB/s' };
+            const kb = bytesPerSec / 1024.0;
+            if (kb < 1000) {
+                return { val: kb.toFixed(1), unit: 'KB/s' };
+            }
+            const mb = kb / 1024.0;
+            return { val: mb.toFixed(2), unit: 'MB/s' };
+        }
+
+        function getThresholdColor(percent) {
+            if (percent >= 90) return 'var(--accent-red)';
+            if (percent >= 75) return 'var(--accent-amber)';
+            return 'var(--accent-green)';
+        }
+
+        // --- Update UI with Snapshot ---
+        function updateDashboard(snap) {
+            if (!snap) return;
+
+            // 1. System & Info
+            try {
+                if (snap.system) {
+                    document.getElementById('systemSummary').textContent = (snap.system.hostname || 'DESKTOP') + ' • ' + (snap.system.motherboard || 'Motherboard');
+                    document.getElementById('uptimeVal').textContent = snap.system.uptimeFormatted || '--';
+
+                    const elevatedBadge = document.getElementById('badgeElevated');
+                    if (snap.system.isElevated) {
+                        elevatedBadge.textContent = 'ADMIN (RECHTE AKTIV)';
+                        elevatedBadge.style.color = 'var(--accent-green)';
+                    } else {
+                        elevatedBadge.textContent = 'STANDARD (KEINE ADMINRECHTE)';
+                        elevatedBadge.style.color = 'var(--text-muted)';
+                    }
+
+                    const lanIp = snap.system.primaryLanIp || (snap.network ? snap.network.ipv4 : '192.168.188.194');
+                    const port = snap.system.port || 8420;
+                    const fullUrl = 'http://' + lanIp + ':' + port;
+                    document.getElementById('lanUrl').textContent = fullUrl;
+                    document.getElementById('qrUrlText').textContent = fullUrl;
+
+                    document.getElementById('procRamVal').textContent = (snap.system.processMemoryMb || 0).toFixed(1) + ' MB';
+                    document.getElementById('procCpuVal').textContent = (snap.system.processCpuPercent || 0).toFixed(2) + ' %';
+                    document.getElementById('sysHostVal').textContent = snap.system.hostname || '--';
+                    document.getElementById('sysMoboVal').textContent = snap.system.motherboard || '--';
+                    document.getElementById('sysOsVal').textContent = snap.system.osVersion || '--';
+                    document.getElementById('sysIpVal').textContent = lanIp;
+                }
+            } catch (err) {
+                console.error('System update error:', err);
+            }
+
+            // 2. CPU
+            let cpuVal = 0;
+            try {
+                if (snap.cpu) {
+                    cpuVal = snap.cpu.totalLoad || 0;
+                    document.getElementById('kpiCpu').textContent = cpuVal.toFixed(1);
+                    document.getElementById('kpiCpuBar').style.width = Math.min(100, Math.max(0, cpuVal)) + '%';
+                    document.getElementById('kpiCpuCores').textContent = (snap.cpu.cores ? snap.cpu.cores.length : 4) + ' Kerne';
+                    if (snap.cpu.temperature > 0) {
+                        document.getElementById('kpiCpuTemp').textContent = snap.cpu.temperature.toFixed(0) + ' °C';
+                    } else {
+                        document.getElementById('kpiCpuTemp').textContent = (snap.system && snap.system.isElevated) ? '--' : '(Admin für Temp)';
+                    }
+
+                    // CPU Gauge
+                    const circle = document.getElementById('cpuGaugeCircle');
+                    if (circle) {
+                        const circumference = 2 * Math.PI * 32;
+                        const offset = circumference - (cpuVal / 100.0) * circumference;
+                        circle.style.strokeDasharray = circumference;
+                        circle.style.strokeDashoffset = offset;
+                        circle.style.stroke = getThresholdColor(cpuVal);
+                    }
+                    document.getElementById('cpuGaugeText').textContent = cpuVal.toFixed(0) + '%';
+
+                    document.getElementById('cpuNameVal').textContent = snap.cpu.name || 'Prozessor';
+                    document.getElementById('cpuModelTag').textContent = snap.cpu.name || 'Prozessor';
+                    document.getElementById('cpuClockVal').textContent = snap.cpu.maxClockMhz > 0 ? snap.cpu.maxClockMhz.toFixed(0) + ' MHz' : '--';
+                    document.getElementById('cpuTempVal').textContent = snap.cpu.temperature > 0 ? snap.cpu.temperature.toFixed(1) + ' °C' : 'Admin erforderlich';
+                    document.getElementById('cpuPowerVal').textContent = snap.cpu.packagePower > 0 ? snap.cpu.packagePower.toFixed(1) + ' W' : '--';
+
+                    // CPU Cores Grid
+                    const coresGrid = document.getElementById('coresGrid');
+                    if (coresGrid && snap.cpu.cores && snap.cpu.cores.length > 0) {
+                        let coresHtml = '';
+                        snap.cpu.cores.forEach(c => {
+                            const cLoad = c.load || 0;
+                            const col = getThresholdColor(cLoad);
+                            coresHtml += `
+                                <div class="core-chip">
+                                    <div class="core-header">
+                                        <span>${c.name}</span>
+                                        <span class="core-load-val" style="color: ${col};">${cLoad.toFixed(0)}%</span>
+                                    </div>
+                                    <div class="progress-bar-bg">
+                                        <div class="progress-bar-fill" style="width: ${cLoad}%; background-color: ${col};"></div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        coresGrid.innerHTML = coresHtml;
+                    }
+                }
+            } catch (err) {
+                console.error('CPU update error:', err);
+            }
+
+            // 3. RAM
+            let ramPct = 0;
+            try {
+                if (snap.memory) {
+                    ramPct = snap.memory.loadPercent || 0;
+                    document.getElementById('kpiRam').textContent = ramPct.toFixed(1);
+                    document.getElementById('kpiRamBar').style.width = ramPct + '%';
+                    document.getElementById('kpiRamUsed').textContent = snap.memory.usedFormatted || '0 GB';
+                    document.getElementById('kpiRamTotal').textContent = 'von ' + (snap.memory.totalFormatted || '24 GB');
+                    document.getElementById('ramTotalTag').textContent = (snap.memory.totalFormatted || '24 GB') + ' RAM';
+                    document.getElementById('ramUsedVal').textContent = ((snap.memory.usedPhysicalBytes || 0) / 1073741824).toFixed(1);
+                    document.getElementById('ramTotalVal').textContent = ((snap.memory.totalPhysicalBytes || 0) / 1073741824).toFixed(1);
+                    document.getElementById('ramPctVal').textContent = ramPct.toFixed(1) + '%';
+                    document.getElementById('ramBarFill').style.width = ramPct + '%';
+
+                    if (snap.memory.virtualTotalBytes > 0) {
+                        document.getElementById('vramUsedVal').textContent = ((snap.memory.virtualUsedBytes || 0) / 1073741824).toFixed(1);
+                        document.getElementById('vramTotalVal').textContent = ((snap.memory.virtualTotalBytes || 0) / 1073741824).toFixed(1);
+                        document.getElementById('vramBarFill').style.width = (snap.memory.virtualLoadPercent || 0) + '%';
+                    }
+                }
+            } catch (err) {
+                console.error('RAM update error:', err);
+            }
+
+            // 4. GPU (Sicher gegen verschiedene Namenskonventionen & undefined)
+            try {
+                if (snap.gpu) {
+                    document.getElementById('gpuNameVal').textContent = snap.gpu.name || 'Intel HD Graphics 530';
+                    const l3d = (snap.gpu.load3D !== undefined) ? snap.gpu.load3D : (snap.gpu.load3d !== undefined ? snap.gpu.load3d : 0);
+                    const lVid = (snap.gpu.loadVideo !== undefined) ? snap.gpu.loadVideo : 0;
+                    const memUsed = (snap.gpu.memoryUsedMb !== undefined) ? snap.gpu.memoryUsedMb : 0;
+                    document.getElementById('gpu3dVal').textContent = (typeof l3d === 'number' ? l3d.toFixed(1) : l3d) + '%';
+                    document.getElementById('gpuVideoVal').textContent = (typeof lVid === 'number' ? lVid.toFixed(1) : lVid) + '%';
+                    document.getElementById('gpuMemVal').textContent = (typeof memUsed === 'number' ? memUsed.toFixed(0) : memUsed) + ' MB';
+                }
+            } catch (err) {
+                console.error('GPU update error:', err);
+            }
+
+            // 5. LAN-DURCHSATZ & NETZWERK-SCHNITTSTELLEN
+            let downSpd = { val: '0.0', unit: 'KB/s' };
+            let upSpd = { val: '0.0', unit: 'KB/s' };
+            try {
+                if (snap.network) {
+                    downSpd = formatSpeed(snap.network.downloadSpeed || 0);
+                    upSpd = formatSpeed(snap.network.uploadSpeed || 0);
+
+                    // KPI 3
+                    document.getElementById('kpiNetDown').textContent = downSpd.val;
+                    document.getElementById('kpiNetDownUnit').textContent = downSpd.unit;
+                    document.getElementById('kpiNetUp').textContent = upSpd.val;
+                    document.getElementById('kpiNetUpUnit').textContent = upSpd.unit;
+                    document.getElementById('kpiNetAdapter').textContent = snap.network.primaryAdapter || 'LAN';
+
+                    const netFillPct = Math.min(100, Math.max(3, ((snap.network.downloadSpeed + snap.network.uploadSpeed) / 1048576.0) * 10));
+                    document.getElementById('kpiNetBar').style.width = netFillPct + '%';
+
+                    // LAN Hero Box
+                    document.getElementById('heroLanDownVal').textContent = downSpd.val;
+                    document.getElementById('heroLanDownUnit').textContent = downSpd.unit;
+                    document.getElementById('heroLanUpVal').textContent = upSpd.val;
+                    document.getElementById('heroLanUpUnit').textContent = upSpd.unit;
+                    document.getElementById('lanTitleText').textContent = snap.network.description || 'Intel(R) Ethernet Connection (2) I219-V';
+                    document.getElementById('lanIpBadge').textContent = snap.network.ipv4 || (snap.system ? snap.system.primaryLanIp : '192.168.188.194');
+                    document.getElementById('lanSpeedBadge').textContent = snap.network.linkSpeed || '1 Gbit/s';
+                    document.getElementById('lanGatewayVal').textContent = snap.network.gateway || '--';
+                    document.getElementById('lanTotalRecvVal').textContent = formatBytes(snap.network.totalBytesReceived || 0);
+                    document.getElementById('lanTotalSentVal').textContent = formatBytes(snap.network.totalBytesSent || 0);
+
+                    // Weitere Adapter (z.B. VMware)
+                    const netList = document.getElementById('networkAdaptersList');
+                    if (netList) {
+                        if (snap.network.adapters && snap.network.adapters.length > 0) {
+                            let netHtml = '';
+                            snap.network.adapters.forEach(a => {
+                                if (a.isLan) return; // Bereits in der LAN Hero Box
+                                const d = formatSpeed(a.downloadSpeed || 0);
+                                const u = formatSpeed(a.uploadSpeed || 0);
+                                netHtml += `
+                                    <div class="adapter-row">
+                                        <div>
+                                            <div style="font-weight: 600; font-size: 12px; color: #fff;">
+                                                <span style="color: var(--text-dim);">●</span>
+                                                <span>${a.name}</span>
+                                                <span style="font-size: 10px; color: var(--text-dim);">(${a.description || ''})</span>
+                                            </div>
+                                            <div style="font-family: var(--font-mono); font-size: 11px; color: var(--text-muted);">${a.ipv4 || 'Keine IPv4'}</div>
+                                        </div>
+                                        <div style="font-family: var(--font-mono); font-size: 11px; text-align: right;">
+                                            <div style="color: var(--accent-cyan);">↓ ${d.val} ${d.unit}</div>
+                                            <div style="color: var(--accent-purple);">↑ ${u.val} ${u.unit}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            netList.innerHTML = netHtml || '<div style="color: var(--text-dim); font-size: 12px;">Keine weiteren Adapter aktiv</div>';
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error('Network update error:', err);
+            }
+
+            // 6. FESTPLATTENAUSLASTUNG & ALLE 12 LAUFWERKE
+            try {
+                if (snap.storage && snap.storage.length > 0) {
+                    let totalStorageBytes = 0;
+                    let totalUsedBytes = 0;
+                    let maxDiskActivity = 0;
+                    let maxDiskLetter = 'C:';
+                    let drivesHtml = '';
+
+                    const driveBadge = document.getElementById('driveCountBadge');
+                    if (driveBadge) driveBadge.textContent = snap.storage.length + ' Partitionen';
+
+                    snap.storage.forEach(d => {
+                        const totalB = Number(d.totalBytes) || 0;
+                        const usedB = Number(d.usedBytes) || 0;
+                        const freeB = Number(d.freeBytes) || 0;
+                        totalStorageBytes += totalB;
+                        totalUsedBytes += usedB;
+
+                        const act = Number(d.activityPercent) || 0;
+                        if (act > maxDiskActivity) {
+                            maxDiskActivity = act;
+                            maxDiskLetter = d.driveLetter || 'C:';
+                        }
+
+                        const freeStr = formatBytes(freeB);
+                        const totalStr = formatBytes(totalB);
+                        const usedStr = formatBytes(usedB);
+                        const pct = Number(d.usedPercent) || 0;
+                        const col = getThresholdColor(pct);
+
+                        const r = formatSpeed(d.readSpeed || 0);
+                        const w = formatSpeed(d.writeSpeed || 0);
+
+                        const isIoActive = (d.readSpeed > 50000 || d.writeSpeed > 50000 || act > 5);
+
+                        drivesHtml += `
+                            <div class="drive-card">
+                                <div class="drive-head">
+                                    <div class="drive-letter">
+                                        <span style="color: var(--accent-cyan);">📁 ${d.driveLetter}</span>
+                                        <span class="drive-label" title="${d.volumeLabel || ''}">${d.volumeLabel || 'Datenträger'}</span>
+                                    </div>
+                                    <div class="drive-badge-wrap">
+                                        <span class="drive-activity-badge" style="${act > 20 ? 'border-color: var(--accent-amber); color: var(--accent-amber);' : ''}">
+                                            ${isIoActive ? '<span class="pulse-dot" style="width:6px; height:6px;"></span>' : ''}
+                                            I/O: ${act.toFixed(0)}%
+                                        </span>
+                                        <span class="card-tag" style="color: ${col}; font-weight: 700;">${pct.toFixed(0)}%</span>
+                                    </div>
+                                </div>
+
+                                <!-- Speicherbelegungs-Balken -->
+                                <div class="progress-bar-bg" style="height: 7px;">
+                                    <div class="progress-bar-fill" style="width: ${pct}%; background-color: ${col};"></div>
+                                </div>
+
+                                <!-- Speicherplatz-Details -->
+                                <div class="drive-space">
+                                    <span>${freeStr} frei</span>
+                                    <span>${usedStr} belegt von ${totalStr}</span>
+                                </div>
+
+                                <!-- Durchsatz-Details (Lesen / Schreiben) -->
+                                <div class="drive-io-row">
+                                    <span class="io-tag">Lesen: <strong style="color: ${d.readSpeed > 10240 ? 'var(--accent-cyan)' : 'var(--text-muted)'};">${r.val} ${r.unit}</strong></span>
+                                    <span class="io-tag">Schreiben: <strong style="color: ${d.writeSpeed > 10240 ? 'var(--accent-purple)' : 'var(--text-muted)'};">${w.val} ${w.unit}</strong></span>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    const gridEl = document.getElementById('drivesGrid');
+                    if (gridEl) gridEl.innerHTML = drivesHtml;
+
+                    const overallPct = totalStorageBytes > 0 ? (totalUsedBytes / totalStorageBytes) * 100.0 : 0;
+                    document.getElementById('kpiStorage').textContent = overallPct.toFixed(1);
+                    document.getElementById('kpiStorageBar').style.width = overallPct + '%';
+                    document.getElementById('kpiStorageBar').style.backgroundColor = getThresholdColor(overallPct);
+                    document.getElementById('kpiStorageUsed').textContent = formatBytes(totalUsedBytes) + ' belegt';
+                    document.getElementById('kpiDiskIo').textContent = 'Max. I/O: ' + maxDiskActivity.toFixed(0) + '% (' + maxDiskLetter + ')';
+                }
+            } catch (err) {
+                console.error('Storage update error:', err);
+            }
+
+            // 7. ECHTZEITVERLAUF (SPARKLINE CHART)
+            try {
+                if (snap.history && snap.history.length > 0) {
+                    historyData = snap.history;
+                } else {
+                    historyData.push({
+                        cpu: cpuVal,
+                        ram: ramPct,
+                        down: (snap.network && snap.network.downloadSpeed) ? (snap.network.downloadSpeed / 1024.0) : 0
+                    });
+                    while (historyData.length > 60) historyData.shift();
+                }
+                document.getElementById('legendCpu').textContent = cpuVal.toFixed(0) + '%';
+                document.getElementById('legendRam').textContent = ramPct.toFixed(0) + '%';
+                document.getElementById('legendNet').textContent = downSpd.val + ' ' + downSpd.unit;
+                drawChart();
+            } catch (err) {
+                console.error('Chart update error:', err);
+            }
+        }
+
+        // --- Connection & Streaming ---
+        let sse = null;
+        let pollTimer = null;
+
+        function connectSSE() {
+            if (sse) {
+                sse.close();
+            }
+
+            const statusEl = document.getElementById('connStatus');
+            statusEl.textContent = 'VERBINDE...';
+
+            sse = new EventSource('/api/stream');
+
+            sse.onopen = function() {
+                statusEl.textContent = 'LIVE • SSE';
+                document.getElementById('streamBadge').className = 'badge badge-live';
+                if (pollTimer) {
+                    clearInterval(pollTimer);
+                    pollTimer = null;
+                }
+            };
+
+            sse.onmessage = function(e) {
+                try {
+                    const snap = JSON.parse(e.data);
+                    updateDashboard(snap);
+                } catch (err) {
+                    console.error('SSE parse error:', err);
+                }
+            };
+
+            sse.onerror = function() {
+                statusEl.textContent = 'POLLING (FALLBACK)';
+                document.getElementById('streamBadge').className = 'badge';
+                sse.close();
+                sse = null;
+
+                if (!pollTimer) {
+                    pollTimer = setInterval(pollStats, 1200);
+                }
+                setTimeout(connectSSE, 5000);
+            };
+        }
+
+        function pollStats() {
+            fetch('/api/stats')
+                .then(r => r.json())
+                .then(snap => updateDashboard(snap))
+                .catch(err => console.error('Poll error:', err));
+        }
+
+        // --- Init & UI Handlers ---
+        window.addEventListener('DOMContentLoaded', function() {
+            resizeCanvas();
+            setTimeout(resizeCanvas, 100);
+            setTimeout(resizeCanvas, 500);
+            connectSSE();
+
+            // QR Code Modal
+            const qrModal = document.getElementById('qrModal');
+            const qrCanvas = document.getElementById('qrCanvas');
+            document.getElementById('btnQr').addEventListener('click', function() {
+                const url = document.getElementById('lanUrl').textContent;
+                drawSimpleQR(url, qrCanvas);
+                qrModal.classList.add('open');
+            });
+
+            document.getElementById('modalClose').addEventListener('click', function() {
+                qrModal.classList.remove('open');
+            });
+
+            qrModal.addEventListener('click', function(e) {
+                if (e.target === qrModal) {
+                    qrModal.classList.remove('open');
+                }
+            });
+
+            // 1-Click Copy LAN URL
+            function copyUrl() {
+                const url = document.getElementById('lanUrl').textContent;
+                navigator.clipboard.writeText(url).then(function() {
+                    const fb = document.getElementById('copyFeedback');
+                    fb.style.display = 'inline';
+                    setTimeout(() => { fb.style.display = 'none'; }, 2000);
+                });
+            }
+
+            document.getElementById('lanPill').addEventListener('click', copyUrl);
+            document.getElementById('modalCopyBtn').addEventListener('click', copyUrl);
+
+            // --- PWA Installation & Service Worker ---
+            let deferredInstallPrompt = null;
+            window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                deferredInstallPrompt = e;
+                const btn = document.getElementById('btnInstallPwa');
+                if (btn) btn.style.display = 'inline-flex';
+            });
+
+            const btnInstall = document.getElementById('btnInstallPwa');
+            if (btnInstall) {
+                btnInstall.addEventListener('click', async function() {
+                    if (deferredInstallPrompt) {
+                        deferredInstallPrompt.prompt();
+                        const choice = await deferredInstallPrompt.userChoice;
+                        deferredInstallPrompt = null;
+                        btnInstall.style.display = 'none';
+                    }
+                });
+            }
+
+            window.addEventListener('appinstalled', function() {
+                console.log('WindowsStats PWA successfully installed!');
+                const btn = document.getElementById('btnInstallPwa');
+                if (btn) btn.style.display = 'none';
+            });
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(reg) {
+                        console.log('WindowsStats PWA ServiceWorker active:', reg.scope);
+                    })
+                    .catch(function(err) {
+                        console.log('ServiceWorker registration error:', err);
+                    });
+            }
+        });
+    </script>
+</body>
+</html>

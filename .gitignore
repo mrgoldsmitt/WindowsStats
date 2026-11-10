@@ -1,0 +1,18 @@
+# Build outputs
+bin/
+obj/
+installer_output/
+*.sys
+*.log
+*.tmp
+*.pdb
+
+# Temp test files
+temp_*
+test_*
+inspect_*
+
+# Windows OS
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
