@@ -134,7 +134,8 @@ namespace WindowsStats.Monitoring
                 try
                 {
                     DateTime cutoff = DateTime.Now.AddDays(-30);
-                    string query = "*[System[Provider[@Name='disk' or @Name='Ntfs' or @Name='Microsoft-Windows-Ntfs'] and (Level=1 or Level=2 or Level=3)]]";
+                    // 30 Tage Zeitfilter (2592000000 ms) direkt in der XPath-Query fuer maximale Performance
+                    string query = "*[System[Provider[@Name='disk' or @Name='Ntfs' or @Name='Microsoft-Windows-Ntfs'] and (Level=1 or Level=2 or Level=3) and TimeCreated[timediff(@SystemTime) <= 2592000000]]]";
                     EventLogQuery logQuery = new EventLogQuery("System", PathType.LogName, query);
                     using (EventLogReader reader = new EventLogReader(logQuery))
                     {
@@ -143,7 +144,7 @@ namespace WindowsStats.Monitoring
                         {
                             using (rec)
                             {
-                                // Nur Ereignisse der letzten 30 Tage als aktive Fehler/Warnungen werten
+                                // Sicherheitspruefung
                                 if (rec.TimeCreated.HasValue && rec.TimeCreated.Value < cutoff)
                                 {
                                     continue;

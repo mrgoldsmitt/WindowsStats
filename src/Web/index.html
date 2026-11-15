@@ -1856,6 +1856,20 @@
                     const gridEl = document.getElementById('drivesGrid');
                     if (!window._driveDoms) window._driveDoms = {};
 
+                    // Remove disconnected drives from DOM cache
+                    if (gridEl && window._driveDoms) {
+                        const currentLetters = new Set(snap.storage.map(d => d.driveLetter));
+                        for (const letKey in window._driveDoms) {
+                            if (!currentLetters.has(letKey)) {
+                                const oldItem = window._driveDoms[letKey];
+                                if (oldItem && oldItem.card && oldItem.card.parentNode) {
+                                    oldItem.card.parentNode.removeChild(oldItem.card);
+                                }
+                                delete window._driveDoms[letKey];
+                            }
+                        }
+                    }
+
                     snap.storage.forEach(d => {
                         const totalB = Number(d.totalBytes) || 0;
                         const usedB = Number(d.usedBytes) || 0;
@@ -1995,6 +2009,9 @@
                                 item.dhStatusTag.textContent = h.status === 'Healthy' ? 'OK' : (h.status === 'Warning' ? 'HINWEIS' : 'KRITISCH');
                                 item.dhStatusTag.style.color = h.badgeColor || '#10b981';
                                 item.dhStatusTag.style.border = '1px solid ' + (h.badgeColor || '#10b981') + '55';
+                            } else {
+                                item.physModel.textContent = 'Erkannt (Prüfe...)';
+                                item.physType.textContent = 'Datenträger aktiv';
                             }
                         }
                     });

@@ -22,6 +22,8 @@ namespace WindowsStats.Monitoring
         private const int MaxHistory = 60;
 
         // Drive Performance Counters: Letter -> (Read, Write, Idle)
+        private readonly object _driveCountersLock = new object();
+        private HashSet<string> _knownDriveLetters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, PerformanceCounter> _driveReadCounters = new Dictionary<string, PerformanceCounter>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, PerformanceCounter> _driveWriteCounters = new Dictionary<string, PerformanceCounter>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, PerformanceCounter> _driveIdleCounters = new Dictionary<string, PerformanceCounter>(StringComparer.OrdinalIgnoreCase);
@@ -127,6 +129,56 @@ namespace WindowsStats.Monitoring
             catch {}
         }
 
+        private void EnsureDriveCounters(string letter)
+        {
+            if (string.IsNullOrEmpty(letter) || letter.Length != 2 || letter[1] != ':') return;
+            lock (_driveCountersLock)
+            {
+                if (_driveReadCounters.ContainsKey(letter)) return;
+                try
+                {
+                    var rc = new PerformanceCounter("LogicalDisk", "Disk Read Bytes/sec", letter, true);
+                    var wc = new PerformanceCounter("LogicalDisk", "Disk Write Bytes/sec", letter, true);
+                    var ic = new PerformanceCounter("LogicalDisk", "% Idle Time", letter, true);
+
+                    rc.NextValue();
+                    wc.NextValue();
+                    ic.NextValue();
+
+                    _driveReadCounters[letter] = rc;
+                    _driveWriteCounters[letter] = wc;
+                    _driveIdleCounters[letter] = ic;
+                }
+                catch {}
+            }
+        }
+
+        private void RemoveDriveCounters(string letter)
+        {
+            lock (_driveCountersLock)
+            {
+                try
+                {
+                    if (_driveReadCounters.ContainsKey(letter))
+                    {
+                        try { _driveReadCounters[letter].Dispose(); } catch {}
+                        _driveReadCounters.Remove(letter);
+                    }
+                    if (_driveWriteCounters.ContainsKey(letter))
+                    {
+                        try { _driveWriteCounters[letter].Dispose(); } catch {}
+                        _driveWriteCounters.Remove(letter);
+                    }
+                    if (_driveIdleCounters.ContainsKey(letter))
+                    {
+                        try { _driveIdleCounters[letter].Dispose(); } catch {}
+                        _driveIdleCounters.Remove(letter);
+                    }
+                }
+                catch {}
+            }
+        }
+
         private void InitDriveCounters()
         {
             try
@@ -139,21 +191,7 @@ namespace WindowsStats.Monitoring
                     // Only match single drive letters like "C:", "D:", etc.
                     if (inst.Length == 2 && inst[1] == ':')
                     {
-                        try
-                        {
-                            var rc = new PerformanceCounter("LogicalDisk", "Disk Read Bytes/sec", inst, true);
-                            var wc = new PerformanceCounter("LogicalDisk", "Disk Write Bytes/sec", inst, true);
-                            var ic = new PerformanceCounter("LogicalDisk", "% Idle Time", inst, true);
-
-                            rc.NextValue();
-                            wc.NextValue();
-                            ic.NextValue();
-
-                            _driveReadCounters[inst] = rc;
-                            _driveWriteCounters[inst] = wc;
-                            _driveIdleCounters[inst] = ic;
-                        }
-                        catch {}
+                        EnsureDriveCounters(inst);
                     }
                 }
             }
@@ -593,13 +631,67 @@ namespace WindowsStats.Monitoring
                 snap.Gpu.Name = "Standard GPU";
             }
 
-            // 6. Storage (Sichere Erfassung aller 12 Laufwerke inkl. Gesundheitscheck)
+            // 6. Storage (Dynamische Erfassung aller Laufwerke inkl. Hotplug & Gesundheitscheck)
             try
             {
                 var letterMap = _diskHealthChecker.GetLetterMapping();
                 snap.HealthReport = _diskHealthChecker.CurrentReport;
 
                 DriveInfo[] drives = DriveInfo.GetDrives();
+                var currentReadyLetters = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                bool missingHealth = false;
+
+                foreach (var drive in drives)
+                {
+                    try
+                    {
+                        if (!drive.IsReady) continue;
+                        string letter = drive.Name.Replace("\\", "");
+                        if (letter.Length == 2 && letter[1] == ':')
+                        {
+                            currentReadyLetters.Add(letter);
+                            EnsureDriveCounters(letter);
+                            if (!letterMap.ContainsKey(letter))
+                            {
+                                missingHealth = true;
+                            }
+                        }
+                    }
+                    catch {}
+                }
+
+                // Hotplug-Erkennung: Neue Laufwerke hinzugefügt oder Laufwerke entfernt
+                bool drivesChanged = !_knownDriveLetters.SetEquals(currentReadyLetters);
+                if (drivesChanged || missingHealth)
+                {
+                    _knownDriveLetters = currentReadyLetters;
+
+                    // Nicht mehr vorhandene Counter freigeben
+                    List<string> toRemove = new List<string>();
+                    lock (_driveCountersLock)
+                    {
+                        foreach (var key in _driveReadCounters.Keys)
+                        {
+                            if (!currentReadyLetters.Contains(key)) toRemove.Add(key);
+                        }
+                    }
+                    foreach (var rem in toRemove)
+                    {
+                        RemoveDriveCounters(rem);
+                    }
+
+                    // Sofortigen asynchronen Health- und WMI-Scan starten (blockiert Sensor-Loop nicht)
+                    ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        try
+                        {
+                            _diskHealthChecker.RunCheck();
+                        }
+                        catch {}
+                    });
+                }
+
+                // Alle aktiven Laufwerke erfassen
                 foreach (var drive in drives)
                 {
                     try
@@ -622,22 +714,27 @@ namespace WindowsStats.Monitoring
                         double wSpeed = 0;
                         double activityPct = 0;
 
-                        if (_driveReadCounters.ContainsKey(letter))
+                        lock (_driveCountersLock)
                         {
-                            try { rSpeed = _driveReadCounters[letter].NextValue(); } catch {}
-                        }
-                        if (_driveWriteCounters.ContainsKey(letter))
-                        {
-                            try { wSpeed = _driveWriteCounters[letter].NextValue(); } catch {}
-                        }
-                        if (_driveIdleCounters.ContainsKey(letter))
-                        {
-                            try
+                            if (_driveReadCounters.ContainsKey(letter))
                             {
-                                float idle = _driveIdleCounters[letter].NextValue();
-                                activityPct = Math.Max(0.0, Math.Min(100.0, 100.0 - idle));
+                                try { rSpeed = _driveReadCounters[letter].NextValue(); }
+                                catch { RemoveDriveCounters(letter); }
                             }
-                            catch {}
+                            if (_driveWriteCounters.ContainsKey(letter))
+                            {
+                                try { wSpeed = _driveWriteCounters[letter].NextValue(); }
+                                catch { RemoveDriveCounters(letter); }
+                            }
+                            if (_driveIdleCounters.ContainsKey(letter))
+                            {
+                                try
+                                {
+                                    float idle = _driveIdleCounters[letter].NextValue();
+                                    activityPct = Math.Max(0.0, Math.Min(100.0, 100.0 - idle));
+                                }
+                                catch { RemoveDriveCounters(letter); }
+                            }
                         }
 
                         string vLabel = "";

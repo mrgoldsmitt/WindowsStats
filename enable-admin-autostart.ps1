@@ -1,4 +1,4 @@
-# ====================================================================
+﻿# ====================================================================
 # WindowsStats - Dauerhaften Administrator-Autostart einrichten
 # ====================================================================
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -23,9 +23,17 @@ Write-Host "Gefundene WindowsStats.exe: $exePath" -ForegroundColor Gray
 
 # 1. Unprivilegierten Autostart aus der Registry entfernen
 Remove-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" -Name "WindowsStats" -ErrorAction SilentlyContinue
-Write-Host "[1/3] Standard-Autostart (ohne Admin-Rechte) in der Registry entfernt." -ForegroundColor Green
+Write-Host "[1/4] Standard-Autostart (ohne Admin-Rechte) in der Registry entfernt." -ForegroundColor Green
 
-# 2. Geplante Aufgabe mit hoechsten Rechten (Admin) registrieren
+# 2. Windows Defender Ausnahme für den Installationsordner & Prozess setzen
+try {
+    Add-MpPreference -ExclusionPath "$env:LOCALAPPDATA\WindowsStats" -ErrorAction SilentlyContinue
+    Add-MpPreference -ExclusionPath "C:\Projekte\WindowsStats" -ErrorAction SilentlyContinue
+    Add-MpPreference -ExclusionProcess "WindowsStats.exe" -ErrorAction SilentlyContinue
+    Write-Host "[2/4] Windows Defender Ausnahme erfolgreich konfiguriert." -ForegroundColor Green
+} catch {}
+
+# 3. Geplante Aufgabe mit hoechsten Rechten (Admin) registrieren
 $taskName = "WindowsStats_Autostart_Admin"
 $action = New-ScheduledTaskAction -Execute $exePath -Argument "--tray"
 $trigger = New-ScheduledTaskTrigger -AtLogOn
@@ -33,10 +41,10 @@ $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interac
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit 0
 
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
-Write-Host "[2/3] Windows-Aufgabe '$taskName' mit hoechsten Rechten registriert." -ForegroundColor Green
+Write-Host "[3/4] Windows-Aufgabe '$taskName' mit hoechsten Rechten registriert." -ForegroundColor Green
 
-# 3. Aktuellen Prozess beenden und neu als Admin ueber die Aufgabe starten
-Write-Host "[3/3] Starte WindowsStats mit vollen Administratorrechten..." -ForegroundColor Green
+# 4. Aktuellen Prozess beenden und neu als Admin ueber die Aufgabe starten
+Write-Host "[4/4] Starte WindowsStats mit vollen Administratorrechten..." -ForegroundColor Green
 Stop-Process -Name WindowsStats -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
 Start-ScheduledTask -TaskName $taskName

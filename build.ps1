@@ -15,6 +15,7 @@ if (-not (Test-Path "bin")) {
 Write-Host "[1/2] Compiling WindowsStats.exe (Standalone Single-File)..." -ForegroundColor Yellow
 
 $sources = @(
+    "src\AssemblyInfo.cs",
     "src\Logger.cs",
     "src\Model\HardwareData.cs",
     "src\Monitoring\DiskHealthChecker.cs",
