@@ -148,8 +148,10 @@ namespace WindowsStats.Server
 
             try
             {
+                Logger.Log("HttpServer: Starting TcpListener on port " + _port + "...");
                 _listener = new TcpListener(IPAddress.Any, _port);
                 _listener.Start();
+                Logger.Log("HttpServer: TcpListener started successfully on port " + _port);
 
                 _listenThread = new Thread(ListenLoop)
                 {
@@ -157,11 +159,10 @@ namespace WindowsStats.Server
                     Name = "WindowsStats_HttpListener"
                 };
                 _listenThread.Start();
-                Console.WriteLine("Web server started successfully on http://0.0.0.0:" + _port);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error starting TcpListener on port " + _port + ": " + ex.Message);
+                Logger.Log("HttpServer: ERROR starting TcpListener: " + ex);
             }
         }
 
@@ -288,6 +289,13 @@ namespace WindowsStats.Server
                 {
                     string json = "{\"status\":\"ok\",\"service\":\"WindowsStats\",\"timestamp\":" + 
                         (long)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds + "}";
+                    SendResponse(stream, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(json));
+                    SafeCloseClient(client);
+                }
+                else if (path == "/api/health/check" || path == "/api/health")
+                {
+                    DiskHealthReport report = _monitor.TriggerHealthCheck();
+                    string json = report != null ? report.ToJson() : "{\"status\":\"ok\"}";
                     SendResponse(stream, "application/json; charset=utf-8", Encoding.UTF8.GetBytes(json));
                     SafeCloseClient(client);
                 }

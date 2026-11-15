@@ -47,9 +47,18 @@ namespace WindowsStats
         [STAThread]
         static void Main(string[] args)
         {
+            try
+            {
+                Application.EnableVisualStyles();
+                try { Application.SetCompatibleTextRenderingDefault(false); } catch {}
+            }
+            catch {}
+
             Logger.Log("Program.Main started. Args: " + string.Join(" ", args));
 
-            // 0. Global unhandled exception shields (prevent app from terminating unexpectedly)
+            try
+            {
+                // 0. Global unhandled exception shields (prevent app from terminating unexpectedly)
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
             Application.ThreadException += (s, e) => {
                 Logger.Log("FATAL Application.ThreadException: " + e.Exception);
@@ -90,27 +99,39 @@ namespace WindowsStats
             };
 
             // 2. Resilient Single instance check
+            Logger.Log("Checking single instance mutex...");
             bool createdNew = false;
             try
             {
                 _singleInstanceMutex = new Mutex(true, "WindowsStats_SingleInstanceMutex_Global", out createdNew);
+                Logger.Log("Mutex created. createdNew: " + createdNew);
                 if (!createdNew)
                 {
-                    // Wait up to 1000ms in case previous instance is restarting/closing
-                    if (_singleInstanceMutex.WaitOne(1000, false))
+                    Logger.Log("Waiting up to 1000ms for mutex...");
+                    try
+                    {
+                        if (_singleInstanceMutex.WaitOne(1000, false))
+                        {
+                            createdNew = true;
+                            Logger.Log("Acquired mutex on wait.");
+                        }
+                    }
+                    catch (AbandonedMutexException)
                     {
                         createdNew = true;
+                        Logger.Log("Acquired abandoned mutex.");
                     }
                 }
             }
-            catch
+            catch (Exception mex)
             {
-                createdNew = true; // Fallback if mutex ownership check fails
+                Logger.Log("Mutex exception: " + mex.Message);
+                createdNew = true;
             }
 
             if (!createdNew)
             {
-                // Another active instance is running! Open browser and exit
+                Logger.Log("Single instance: exiting because already running!");
                 try
                 {
                     Process.Start("http://localhost:8420");
@@ -147,10 +168,14 @@ namespace WindowsStats
             }
 
             // 4. Initialize core components
+            Logger.Log("Initializing HardwareMonitor...");
             HardwareMonitor monitor = new HardwareMonitor(2000);
+            Logger.Log("Starting HardwareMonitor...");
             monitor.Start();
 
+            Logger.Log("Initializing HttpServer...");
             HttpServer server = new HttpServer(port, monitor);
+            Logger.Log("Starting HttpServer...");
             server.Start();
 
             if (headless)
@@ -170,14 +195,25 @@ namespace WindowsStats
             }
 
             // 5. Run as Windows Forms Tray Application
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-
             Logger.Log("Creating TrayApplicationContext...");
-            TrayApplicationContext context = new TrayApplicationContext(monitor, server, port, showControlOnStart);
-            Logger.Log("Starting Application.Run(context)...");
-            Application.Run(context);
-            Logger.Log("Application.Run(context) has exited!");
+            try
+            {
+                TrayApplicationContext context = new TrayApplicationContext(monitor, server, port, showControlOnStart);
+                Logger.Log("Starting Application.Run(context)...");
+                Application.Run(context);
+                Logger.Log("Application.Run(context) has exited!");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("ERROR in TrayApplicationContext: " + ex);
+                LogCrash("TrayApplicationContext", ex);
+            }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("FATAL in Main: " + ex);
+                LogCrash("Main", ex);
+            }
         }
     }
 }

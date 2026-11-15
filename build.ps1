@@ -17,6 +17,7 @@ Write-Host "[1/2] Compiling WindowsStats.exe (Standalone Single-File)..." -Foreg
 $sources = @(
     "src\Logger.cs",
     "src\Model\HardwareData.cs",
+    "src\Monitoring\DiskHealthChecker.cs",
     "src\Monitoring\HardwareMonitor.cs",
     "src\Server\HttpServer.cs",
     "src\UI\ControlForm.cs",

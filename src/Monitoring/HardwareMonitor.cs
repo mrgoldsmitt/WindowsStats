@@ -48,6 +48,9 @@ namespace WindowsStats.Monitoring
         private string _motherboardName = "Standard Motherboard";
         private string _cachedLanIp = "127.0.0.1";
 
+        // Disk Health Checker (WMI & Event Log)
+        private readonly DiskHealthChecker _diskHealthChecker = new DiskHealthChecker();
+
         private Thread _workerThread;
         private volatile bool _running;
         private int _pollingIntervalMs = 2000;
@@ -212,6 +215,7 @@ namespace WindowsStats.Monitoring
         {
             if (_running) return;
             _running = true;
+            _diskHealthChecker.Start();
             _workerThread = new Thread(WorkerLoop)
             {
                 IsBackground = true,
@@ -223,10 +227,16 @@ namespace WindowsStats.Monitoring
         public void Stop()
         {
             _running = false;
+            _diskHealthChecker.Stop();
             if (_workerThread != null && _workerThread.IsAlive)
             {
                 _workerThread.Join(2000);
             }
+        }
+
+        public DiskHealthReport TriggerHealthCheck()
+        {
+            return _diskHealthChecker.RunCheck();
         }
 
         public void SetPollingInterval(int ms)
@@ -583,9 +593,12 @@ namespace WindowsStats.Monitoring
                 snap.Gpu.Name = "Standard GPU";
             }
 
-            // 6. Storage (Sichere Erfassung aller 12 Laufwerke)
+            // 6. Storage (Sichere Erfassung aller 12 Laufwerke inkl. Gesundheitscheck)
             try
             {
+                var letterMap = _diskHealthChecker.GetLetterMapping();
+                snap.HealthReport = _diskHealthChecker.CurrentReport;
+
                 DriveInfo[] drives = DriveInfo.GetDrives();
                 foreach (var drive in drives)
                 {
@@ -630,6 +643,12 @@ namespace WindowsStats.Monitoring
                         string vLabel = "";
                         try { vLabel = drive.VolumeLabel; } catch {}
 
+                        DiskHealthInfo dHealth = null;
+                        if (letterMap.ContainsKey(letter))
+                        {
+                            dHealth = letterMap[letter];
+                        }
+
                         snap.Storage.Add(new DriveItem
                         {
                             Name = drive.Name,
@@ -642,7 +661,8 @@ namespace WindowsStats.Monitoring
                             UsedPercent = usedPct,
                             ActivityPercent = activityPct,
                             ReadSpeedBytesPerSec = rSpeed,
-                            WriteSpeedBytesPerSec = wSpeed
+                            WriteSpeedBytesPerSec = wSpeed,
+                            Health = dHealth
                         });
                     }
                     catch {}
@@ -886,6 +906,7 @@ namespace WindowsStats.Monitoring
         public void Dispose()
         {
             Stop();
+            try { _diskHealthChecker.Dispose(); } catch {}
 
             foreach (var c in _driveReadCounters.Values) { try { c.Dispose(); } catch {} }
             foreach (var c in _driveWriteCounters.Values) { try { c.Dispose(); } catch {} }

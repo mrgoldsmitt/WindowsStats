@@ -82,6 +82,82 @@ namespace WindowsStats.Model
         public double ActivityPercent;   // I/O-Auslastung / Aktive Zeit % (100 - % Idle Time)
         public double ReadSpeedBytesPerSec;
         public double WriteSpeedBytesPerSec;
+        public DiskHealthInfo Health;
+    }
+
+    public class DiskHealthInfo
+    {
+        public int DiskIndex;
+        public string Model;
+        public string CleanModel;
+        public string Status;             // "Healthy", "Warning", "Critical"
+        public string Assessment;         // "Gesund", "Beobachten", "Austausch empfohlen"
+        public string BadgeColor;         // "#00e676", "#ffb300", "#ff5252"
+        public string InterfaceType;      // "NVMe", "SATA", "USB", "SCSI", "IDE"
+        public string MediaType;          // "SSD", "HDD"
+        public string SerialNumber;
+        public string AssignedLetters;
+        public int BadBlocks;
+        public int IoRetries;
+        public int HardwareErrors;
+        public string Summary;
+        public string LastChecked;
+    }
+
+    public class DiskHealthReport
+    {
+        public string LastChecked;
+        public string OverallStatus;
+        public string OverallColor;
+        public List<DiskHealthInfo> Disks;
+
+        public DiskHealthReport()
+        {
+            Disks = new List<DiskHealthInfo>();
+            LastChecked = "--";
+            OverallStatus = "Initialisiere...";
+            OverallColor = "#00e676";
+        }
+
+        public string ToJson()
+        {
+            StringBuilder sb = new StringBuilder(2048);
+            sb.Append("{");
+            sb.Append("\"lastChecked\":\"").Append(Escape(LastChecked)).Append("\",");
+            sb.Append("\"overallStatus\":\"").Append(Escape(OverallStatus)).Append("\",");
+            sb.Append("\"overallColor\":\"").Append(Escape(OverallColor)).Append("\",");
+            sb.Append("\"disksCount\":").Append(Disks.Count).Append(",");
+            sb.Append("\"disks\":[");
+            for (int i = 0; i < Disks.Count; i++)
+            {
+                if (i > 0) sb.Append(",");
+                var dh = Disks[i];
+                sb.Append("{");
+                sb.Append("\"diskIndex\":").Append(dh.DiskIndex).Append(",");
+                sb.Append("\"model\":\"").Append(Escape(dh.Model)).Append("\",");
+                sb.Append("\"cleanModel\":\"").Append(Escape(dh.CleanModel)).Append("\",");
+                sb.Append("\"status\":\"").Append(Escape(dh.Status)).Append("\",");
+                sb.Append("\"assessment\":\"").Append(Escape(dh.Assessment)).Append("\",");
+                sb.Append("\"badgeColor\":\"").Append(Escape(dh.BadgeColor)).Append("\",");
+                sb.Append("\"interfaceType\":\"").Append(Escape(dh.InterfaceType)).Append("\",");
+                sb.Append("\"mediaType\":\"").Append(Escape(dh.MediaType)).Append("\",");
+                sb.Append("\"assignedLetters\":\"").Append(Escape(dh.AssignedLetters)).Append("\",");
+                sb.Append("\"badBlocks\":").Append(dh.BadBlocks).Append(",");
+                sb.Append("\"ioRetries\":").Append(dh.IoRetries).Append(",");
+                sb.Append("\"summary\":\"").Append(Escape(dh.Summary)).Append("\",");
+                sb.Append("\"lastChecked\":\"").Append(Escape(dh.LastChecked)).Append("\"");
+                sb.Append("}");
+            }
+            sb.Append("]");
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        private static string Escape(string s)
+        {
+            if (s == null) return "";
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "").Replace("\n", " ");
+        }
     }
 
     public class NetworkAdapterItem
@@ -135,6 +211,7 @@ namespace WindowsStats.Model
         public List<DriveItem> Storage;
         public NetworkInfo Network;
         public List<HistoryPoint> History;
+        public DiskHealthReport HealthReport;
 
         public HardwareSnapshot()
         {
@@ -145,6 +222,7 @@ namespace WindowsStats.Model
             Storage = new List<DriveItem>();
             Network = new NetworkInfo();
             History = new List<HistoryPoint>();
+            HealthReport = new DiskHealthReport();
         }
 
         private static string Fmt(double val, int decimals = 1)
@@ -220,7 +298,6 @@ namespace WindowsStats.Model
             // GPU
             sb.Append("\"gpu\":{");
             sb.Append("\"name\":\"").Append(Escape(Gpu.Name)).Append("\",");
-            sb.Append("\"load3d\":").Append(Fmt(Gpu.Load3D)).Append(",");
             sb.Append("\"load3D\":").Append(Fmt(Gpu.Load3D)).Append(",");
             sb.Append("\"loadVideo\":").Append(Fmt(Gpu.LoadVideo)).Append(",");
             sb.Append("\"memoryUsedMb\":").Append(Fmt(Gpu.MemoryUsedMb)).Append(",");
@@ -246,6 +323,25 @@ namespace WindowsStats.Model
                 sb.Append("\"activityPercent\":").Append(Fmt(d.ActivityPercent)).Append(",");
                 sb.Append("\"readSpeed\":").Append(Fmt(d.ReadSpeedBytesPerSec, 0)).Append(",");
                 sb.Append("\"writeSpeed\":").Append(Fmt(d.WriteSpeedBytesPerSec, 0));
+                if (d.Health != null)
+                {
+                    sb.Append(",\"health\":{");
+                    sb.Append("\"diskIndex\":").Append(d.Health.DiskIndex).Append(",");
+                    sb.Append("\"model\":\"").Append(Escape(d.Health.Model)).Append("\",");
+                    sb.Append("\"cleanModel\":\"").Append(Escape(d.Health.CleanModel)).Append("\",");
+                    sb.Append("\"status\":\"").Append(Escape(d.Health.Status)).Append("\",");
+                    sb.Append("\"assessment\":\"").Append(Escape(d.Health.Assessment)).Append("\",");
+                    sb.Append("\"badgeColor\":\"").Append(Escape(d.Health.BadgeColor)).Append("\",");
+                    sb.Append("\"interfaceType\":\"").Append(Escape(d.Health.InterfaceType)).Append("\",");
+                    sb.Append("\"mediaType\":\"").Append(Escape(d.Health.MediaType)).Append("\",");
+                    sb.Append("\"serialNumber\":\"").Append(Escape(d.Health.SerialNumber)).Append("\",");
+                    sb.Append("\"badBlocks\":").Append(d.Health.BadBlocks).Append(",");
+                    sb.Append("\"ioRetries\":").Append(d.Health.IoRetries).Append(",");
+                    sb.Append("\"hardwareErrors\":").Append(d.Health.HardwareErrors).Append(",");
+                    sb.Append("\"summary\":\"").Append(Escape(d.Health.Summary)).Append("\",");
+                    sb.Append("\"lastChecked\":\"").Append(Escape(d.Health.LastChecked)).Append("\"");
+                    sb.Append("}");
+                }
                 sb.Append("}");
             }
             sb.Append("],");
@@ -296,6 +392,12 @@ namespace WindowsStats.Model
                 sb.Append("}");
             }
             sb.Append("]");
+
+            // Health Report
+            if (HealthReport != null)
+            {
+                sb.Append(",\"healthReport\":").Append(HealthReport.ToJson());
+            }
 
             sb.Append("}");
             return sb.ToString();

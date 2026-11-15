@@ -490,35 +490,93 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
 
-        .drive-letter {
+        .drive-title-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .drive-id {
             font-family: var(--font-mono);
             font-weight: 700;
-            font-size: 14px;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 15px;
+            color: var(--accent-cyan);
+            white-space: nowrap;
         }
 
         .drive-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            max-width: 140px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            letter-spacing: 0.01em;
+        }
+
+        .drive-tag-wrap {
+            flex-shrink: 0;
+        }
+
+        .drive-card .card-tag {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .drive-meta-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            font-family: var(--font-mono);
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .drive-phys-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .drive-phys-model {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .drive-phys-type {
+            color: var(--text-dim, #64748b);
+            white-space: nowrap;
+            font-size: 10.5px;
+            flex-shrink: 0;
         }
 
         .drive-badge-wrap {
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-shrink: 0;
         }
 
         .drive-activity-badge {
-            font-size: 11px;
+            font-size: 10.5px;
             font-family: var(--font-mono);
             padding: 2px 6px;
             border-radius: 4px;
@@ -551,6 +609,196 @@
 
         .io-tag {
             color: #cbd5e1;
+        }
+
+        /* Drives Section Header (Clean 3-Line Vertical Stack) */
+        .drives-card-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .dch-line-1 {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dch-line-2 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dch-line-3 {
+            font-size: 11px;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+        }
+
+        /* Compact Health Mini Bar */
+        .health-mini-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(6, 182, 212, 0.03));
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 6px;
+            padding: 5px 10px;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+
+        .hm-left {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .hm-icon {
+            font-size: 14px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .hm-text {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+
+        .hm-status {
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .hm-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            white-space: nowrap;
+        }
+
+        .btn-check-compact {
+            background: rgba(6, 182, 212, 0.1);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            color: var(--accent-cyan);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            line-height: 1.2;
+        }
+
+        .btn-check-compact:hover {
+            background: rgba(6, 182, 212, 0.25);
+            border-color: var(--accent-cyan);
+            color: #fff;
+        }
+
+        .btn-check-compact:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .health-badge {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 7px;
+            border-radius: 4px;
+            white-space: nowrap;
+            letter-spacing: 0.01em;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .health-ok {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        .health-warn {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .health-crit {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .drive-health-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.025);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            margin-top: 3px;
+            gap: 8px;
+        }
+
+        .dh-summary-wrap {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dh-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .dh-summary {
+            font-size: 11px;
+            line-height: 1.35;
+            color: #cbd5e1;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .dh-status-tag {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            align-self: flex-start;
+            letter-spacing: 0.02em;
         }
 
         /* Physical LAN Card */
@@ -944,14 +1192,32 @@
                 </div>
             </div>
 
-            <!-- Drives Section (All 12 Drives with Auslastung & I/O) -->
+            <!-- Drives Section (All Partitions with Auslastung, I/O & Health) -->
             <div class="card col-12">
-                <div class="card-header">
-                    <div class="card-title">
-                        <span>Laufwerke & Festplatten-Auslastung</span>
-                        <span class="badge" id="driveCountBadge" style="font-size: 11px;">12 Partitionen</span>
+                <div class="drives-card-header">
+                    <div class="dch-line-1">
+                        <span>Laufwerke & Festplatten</span>
                     </div>
-                    <span class="card-tag">Speicherbelegung + I/O-Aktivität</span>
+                    <div class="dch-line-2">
+                        <span class="badge" id="driveCountBadge">11 Partitionen</span>
+                    </div>
+                    <div class="dch-line-3">
+                        <span>Speicherbelegung, I/O-Aktivität &amp; Gesundheitszustand</span>
+                    </div>
+                </div>
+
+                <div class="health-mini-bar" id="healthCheckBar">
+                    <div class="hm-left">
+                        <span class="hm-icon" id="healthOverallIcon">🛡️</span>
+                        <div class="hm-text">
+                            <span class="hm-status" id="healthOverallText">Check: Initialisiere...</span>
+                            <span class="hm-meta" id="healthLastChecked">Täglich 03:00 Uhr</span>
+                        </div>
+                    </div>
+                    <button class="btn-check-compact" id="btnRunHealthCheck" onclick="triggerHealthCheck()" title="Gesundheitscheck jetzt manuell starten">
+                        <span id="btnCheckIcon">🔄</span>
+                        <span id="btnCheckLabel">Prüfen</span>
+                    </button>
                 </div>
 
                 <div class="drives-grid" id="drivesGrid">
@@ -1611,13 +1877,22 @@
                             card.className = 'drive-card';
                             card.innerHTML = `
                                 <div class="drive-head">
-                                    <div class="drive-letter">
-                                        <span style="color: var(--accent-cyan);">📁 ${d.driveLetter}</span>
+                                    <div class="drive-title-wrap">
+                                        <span class="drive-id">📁 ${d.driveLetter}</span>
                                         <span class="drive-label" title="${d.volumeLabel || ''}">${d.volumeLabel || 'Datenträger'}</span>
                                     </div>
-                                    <div class="drive-badge-wrap">
-                                        <span class="drive-activity-badge">I/O: 0%</span>
+                                    <div class="drive-tag-wrap">
                                         <span class="card-tag">0%</span>
+                                    </div>
+                                </div>
+                                <div class="drive-meta-row">
+                                    <div class="drive-phys-wrap">
+                                        <span class="drive-phys-model" title="">--</span>
+                                        <span class="drive-phys-type">--</span>
+                                    </div>
+                                    <div class="drive-badge-wrap">
+                                        <span class="health-badge health-ok">🛡️ Gesund</span>
+                                        <span class="drive-activity-badge">I/O: 0%</span>
                                     </div>
                                 </div>
                                 <div class="progress-bar-bg" style="height: 7px;">
@@ -1631,22 +1906,40 @@
                                     <span class="io-tag">Lesen: <strong class="io-r">0 KB/s</strong></span>
                                     <span class="io-tag">Schreiben: <strong class="io-w">0 KB/s</strong></span>
                                 </div>
+                                <div class="drive-health-row">
+                                    <div class="dh-summary-wrap">
+                                        <span class="dh-dot"></span>
+                                        <span class="dh-summary" title="">SMART OK • 0 Fehler</span>
+                                    </div>
+                                    <span class="dh-status-tag" style="color: #10b981;">OK</span>
+                                </div>
                             `;
                             gridEl.appendChild(card);
                             item = {
                                 card: card,
+                                driveLabel: card.querySelector('.drive-label'),
                                 actBadge: card.querySelector('.drive-activity-badge'),
+                                healthBadge: card.querySelector('.health-badge'),
                                 tag: card.querySelector('.card-tag'),
                                 fill: card.querySelector('.progress-bar-fill'),
                                 spFree: card.querySelector('.sp-free'),
                                 spUsed: card.querySelector('.sp-used'),
                                 ioR: card.querySelector('.io-r'),
-                                ioW: card.querySelector('.io-w')
+                                ioW: card.querySelector('.io-w'),
+                                physModel: card.querySelector('.drive-phys-model'),
+                                physType: card.querySelector('.drive-phys-type'),
+                                dhDot: card.querySelector('.dh-dot'),
+                                dhSummary: card.querySelector('.dh-summary'),
+                                dhStatusTag: card.querySelector('.dh-status-tag')
                             };
                             window._driveDoms[d.driveLetter] = item;
                         }
 
                         if (item) {
+                            if (item.driveLabel) {
+                                item.driveLabel.textContent = d.volumeLabel || 'Datenträger';
+                                item.driveLabel.title = (d.volumeLabel || 'Datenträger') + ' (' + d.driveLetter + ')';
+                            }
                             item.actBadge.innerHTML = (isIoActive ? '<span class="pulse-dot" style="width:6px; height:6px;"></span> ' : '') + 'I/O: ' + act.toFixed(0) + '%';
                             if (act > 20) {
                                 item.actBadge.style.borderColor = 'var(--accent-amber)';
@@ -1665,6 +1958,36 @@
                             item.ioR.style.color = d.readSpeed > 10240 ? 'var(--accent-cyan)' : 'var(--text-muted)';
                             item.ioW.textContent = w.val + ' ' + w.unit;
                             item.ioW.style.color = d.writeSpeed > 10240 ? 'var(--accent-purple)' : 'var(--text-muted)';
+
+                            // Health Update
+                            if (d.health) {
+                                const h = d.health;
+                                item.physModel.textContent = h.cleanModel || h.model || '--';
+                                item.physModel.title = (h.model || '') + (h.serialNumber ? ' (S/N: ' + h.serialNumber + ')' : '');
+                                item.physType.textContent = (h.mediaType || 'HDD') + ' • ' + (h.interfaceType || 'SATA');
+
+                                let badgeClass = 'health-ok';
+                                let icon = '🛡️';
+                                if (h.status === 'Critical') {
+                                    badgeClass = 'health-crit';
+                                    icon = '⚠️';
+                                } else if (h.status === 'Warning') {
+                                    badgeClass = 'health-warn';
+                                    icon = '🟡';
+                                }
+                                item.healthBadge.className = 'health-badge ' + badgeClass;
+                                item.healthBadge.textContent = icon + ' ' + (h.assessment || 'Gesund');
+                                item.healthBadge.title = h.summary || '';
+
+                                item.dhSummary.textContent = h.summary || 'SMART OK • 0 Fehler';
+                                item.dhSummary.title = (h.summary || '') + ' (Check: ' + (h.lastChecked || '--') + ')';
+                                if (item.dhDot) {
+                                    item.dhDot.style.background = h.badgeColor || '#10b981';
+                                }
+                                item.dhStatusTag.textContent = h.status === 'Healthy' ? 'OK' : (h.status === 'Warning' ? 'HINWEIS' : 'KRITISCH');
+                                item.dhStatusTag.style.color = h.badgeColor || '#10b981';
+                                item.dhStatusTag.style.border = '1px solid ' + (h.badgeColor || '#10b981') + '55';
+                            }
                         }
                     });
 
@@ -1674,6 +1997,25 @@
                     document.getElementById('kpiStorageBar').style.backgroundColor = getThresholdColor(overallPct);
                     document.getElementById('kpiStorageUsed').textContent = formatBytes(totalUsedBytes) + ' belegt';
                     document.getElementById('kpiDiskIo').textContent = 'Max. I/O: ' + maxDiskActivity.toFixed(0) + '% (' + maxDiskLetter + ')';
+
+                    // Health Check Bar Update
+                    if (snap.healthReport) {
+                        const hr = snap.healthReport;
+                        const barEl = document.getElementById('healthCheckBar');
+                        const textEl = document.getElementById('healthOverallText');
+                        const subEl = document.getElementById('healthLastChecked');
+                        const iconEl = document.getElementById('healthOverallIcon');
+                        if (textEl && hr.overallStatus) textEl.textContent = 'Check: ' + hr.overallStatus;
+                        if (subEl && hr.lastChecked) subEl.textContent = 'Zuletzt: ' + hr.lastChecked + ' • Auto-Check: 03:00 Uhr';
+                        if (iconEl && hr.overallColor) {
+                            if (hr.overallColor === '#ff5252') iconEl.textContent = '🚨';
+                            else if (hr.overallColor === '#ffb300') iconEl.textContent = '🟡';
+                            else iconEl.textContent = '🛡️';
+                        }
+                        if (barEl && hr.overallColor) {
+                            barEl.style.borderColor = hr.overallColor === '#00e676' ? 'rgba(16, 185, 129, 0.35)' : hr.overallColor;
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('Storage update error:', err);
@@ -1699,6 +2041,39 @@
                 console.error('Chart update error:', err);
             }
         }
+
+        // --- Manual Health Check Trigger ---
+        window.triggerHealthCheck = function() {
+            const btn = document.getElementById('btnRunHealthCheck');
+            const icon = document.getElementById('btnCheckIcon');
+            const label = document.getElementById('btnCheckLabel');
+            if (btn) {
+                btn.disabled = true;
+                if (icon) icon.textContent = '⏳';
+                if (label) label.textContent = 'Prüfe...';
+            }
+            fetch('/api/health/check')
+                .then(r => r.json())
+                .then(data => {
+                    if (btn) {
+                        if (icon) icon.textContent = '✓';
+                        if (label) label.textContent = 'Fertig';
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            if (icon) icon.textContent = '🔄';
+                            if (label) label.textContent = 'Prüfen';
+                        }, 2500);
+                    }
+                })
+                .catch(err => {
+                    console.error('Health check error:', err);
+                    if (btn) {
+                        btn.disabled = false;
+                        if (icon) icon.textContent = '⚠️';
+                        if (label) label.textContent = 'Fehler';
+                    }
+                });
+        };
 
         // --- Connection & Streaming ---
         let sse = null;
